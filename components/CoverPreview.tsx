@@ -36,12 +36,12 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   const isComposing = useRef(false);
 
   // Style hack to prevent Chrome/Android Text Inflation
-  // Elements with max-height defined are not boosted by the algorithm.
+  // Use 100% instead of none for better compatibility
   const noInflationStyle: React.CSSProperties = {
      maxHeight: '999999px',
-     WebkitTextSizeAdjust: 'none',
+     WebkitTextSizeAdjust: '100%',
      // @ts-ignore
-     textSizeAdjust: 'none' 
+     textSizeAdjust: '100%' 
   };
 
   useEffect(() => {
@@ -187,6 +187,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       return (
         <div 
           className={`relative z-10 p-6 w-full flex flex-col justify-between ${isLongText ? 'flex-auto' : 'h-full overflow-hidden'}`}
+          style={noInflationStyle}
         >
           {renderTechDecorations()}
 
@@ -291,13 +292,14 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       return (
         <div 
           className={`relative z-10 p-8 flex flex-col ${flexGrowClass}`}
+          style={noInflationStyle}
         >
           {renderVintageDecorations()}
 
           <div className="flex flex-col items-center text-center mt-2 mb-2 relative shrink-0 flex-none">
              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120%] h-full bg-white/30 blur-xl rounded-full -z-10"></div>
              
-             <span className={`text-xs mb-1 tracking-[0.3em] uppercase opacity-70 ${getBodyFontClass()}`} style={{ color: textColor }}>
+             <span className={`text-xs mb-1 tracking-[0.3em] uppercase opacity-70 ${getBodyFontClass()}`} style={{ ...noInflationStyle, color: textColor }}>
                 The Story of
              </span>
              <h1 className={`mb-2 leading-tight whitespace-nowrap ${getTitleFontClass()}`} style={{ ...noInflationStyle, color: textColor }}>
@@ -365,6 +367,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     return (
       <div 
         className={`relative z-10 p-6 flex flex-col ${flexGrowClass}`}
+        style={noInflationStyle}
       >
         <div className="absolute top-0 right-0 w-1/2 h-full opacity-10" style={{ background: `linear-gradient(to left, ${accentColor}, transparent)` }}></div>
         <div className="absolute top-6 left-6 w-12 h-1 bg-current" style={{ color: textColor }}></div>
@@ -458,8 +461,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
         flexDirection: 'column',
         width: '400px',
         minWidth: '400px',
-        textSizeAdjust: 'none',
-        WebkitTextSizeAdjust: 'none'
+        textSizeAdjust: '100%',
+        WebkitTextSizeAdjust: '100%'
       }}
     >
       <div 

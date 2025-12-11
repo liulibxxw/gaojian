@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>衔书又止</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,16 +31,21 @@
     </script>
     <style>
       html {
-        font-size: 16px; /* Fix root font size for consistent rem units */
-        -webkit-text-size-adjust: none; /* Prevent iOS/Android text inflation completely */
-        text-size-adjust: none;
+        font-size: 16px;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        height: 100%;
       }
       body {
         height: 100%;
         width: 100%;
         overflow: hidden;
-        position: fixed; /* Prevent bouncy scroll on iOS */
+        position: fixed;
         background-color: #f3f4f6;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        /* Chrome Android Font Boosting Hack */
+        max-height: 999999px; 
       }
       #root {
         height: 100%;
@@ -52,6 +57,7 @@
       * {
         -ms-overflow-style: none;
         scrollbar-width: none;
+        box-sizing: border-box;
       }
     </style>
   <script type="importmap">
