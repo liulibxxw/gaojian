@@ -59,10 +59,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
 
   useEffect(() => {
     const el = editableRef.current;
-    // This effect synchronizes the content of the editable div with the `bodyText` state.
-    // It's crucial for correctly displaying text when a draft is loaded or the layout mode changes.
-    // It checks `isComposing` to avoid interrupting complex input methods (like Chinese Pinyin).
-    // The main logic is to update the div's HTML if it doesn't match the state.
     if (el && el.innerHTML !== bodyText && !isComposing.current) {
       el.innerHTML = bodyText;
     }
@@ -96,6 +92,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   };
 
   const isLongText = mode === 'long-text';
+  const flexGrowClass = isLongText ? 'flex-auto' : 'flex-1';
+  const minHeightClass = isLongText ? '' : 'min-h-0';
 
   const categories = effectiveCategory ? effectiveCategory.split(/[、, ]/).map(c => c.trim()).filter(Boolean) : [];
   const displayCategories = categories.length > 0 ? categories : (effectiveCategory ? [effectiveCategory] : []);
@@ -179,11 +177,11 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     if (layoutStyle === 'minimal') {
       return (
         <div 
-          className={`relative z-10 p-6 w-full flex flex-col justify-between ${isLongText ? 'min-h-[inherit]' : 'h-full overflow-hidden'}`}
+          className={`relative z-10 p-6 w-full flex flex-col justify-between ${isLongText ? 'flex-auto' : 'h-full overflow-hidden'}`}
         >
           {renderTechDecorations()}
 
-          <div className={`flex-1 flex flex-col ${isLongText ? '' : 'min-h-0'}`}>
+          <div className={`${flexGrowClass} flex flex-col ${minHeightClass}`}>
               <div className="flex justify-between items-center border-b pb-2 mb-4 opacity-80 shrink-0" style={{ borderColor: `${textColor}40` }}>
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: accentColor }}></div>
@@ -223,7 +221,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                 </p>
               </div>
 
-              <div className={`relative mt-1 flex-1 flex flex-col ${isLongText ? '' : 'min-h-0'}`}>
+              <div className={`relative mt-1 ${flexGrowClass} flex flex-col ${minHeightClass}`}>
                 <div className="flex items-center mb-2 shrink-0">
                     <div className="px-2 py-0.5 text-[9px] font-bold tracking-widest text-white flex items-center justify-center" style={{ backgroundColor: textColor }}>
                       ARCHIVE
@@ -233,7 +231,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                 </div>
 
                 <div 
-                   className={`relative pl-6 pt-1 pb-2 flex-1 cursor-text ${isLongText ? '' : 'min-h-0'}`}
+                   className={`relative pl-6 pt-1 pb-2 ${flexGrowClass} cursor-text ${minHeightClass}`}
                    onClick={handleContainerClick}
                 >
                     <div className="absolute left-0 top-0 bottom-4 w-px bg-current opacity-20" style={{ color: textColor }}></div>
@@ -283,7 +281,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     if (layoutStyle === 'split') {
       return (
         <div 
-          className="relative z-10 p-8 flex flex-col flex-1"
+          className={`relative z-10 p-8 flex flex-col ${flexGrowClass}`}
         >
           {renderVintageDecorations()}
 
@@ -302,9 +300,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
           </div>
 
           <div 
-            className="relative flex flex-col justify-start pt-6 flex-1 cursor-text"
+            className={`relative flex flex-col justify-start pt-6 ${flexGrowClass} cursor-text`}
             style={{ 
-               flex: isLongText ? '1 1 auto' : '1 1 0%',
                marginBottom: isLongText ? '0.25rem' : '0',
                overflow: isLongText ? 'visible' : 'hidden'
             }}
@@ -358,19 +355,19 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
 
     return (
       <div 
-        className="relative z-10 p-6 flex flex-col flex-1"
+        className={`relative z-10 p-6 flex flex-col ${flexGrowClass}`}
       >
         <div className="absolute top-0 right-0 w-1/2 h-full opacity-10" style={{ background: `linear-gradient(to left, ${accentColor}, transparent)` }}></div>
         <div className="absolute top-6 left-6 w-12 h-1 bg-current" style={{ color: textColor }}></div>
 
         <div 
-          className="relative border-2 border-current p-1 flex-1 flex flex-col" 
+          className={`relative border-2 border-current p-1 flex-col flex ${flexGrowClass}`}
           style={{ 
              color: textColor
           }}
         >
           <div 
-            className="relative border border-current p-4 bg-white/20 backdrop-blur-sm flex flex-col flex-1"
+            className={`relative border border-current p-4 bg-white/20 backdrop-blur-sm flex flex-col ${flexGrowClass}`}
           >
             
             <div className="flex flex-col items-center mb-4 w-full shrink-0 flex-none">
@@ -407,9 +404,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
             </div>
 
             <div 
-               className={`relative flex-1 cursor-text`}
+               className={`relative ${flexGrowClass} cursor-text`}
                style={{
-                 flex: isLongText ? '1 1 auto' : '1 1 0%',
                  marginBottom: isLongText ? '0' : '0',
                  overflow: isLongText ? 'visible' : 'hidden'
                }}

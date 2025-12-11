@@ -18,9 +18,53 @@ import EditorControls, { EditorTab, MobileDraftsStrip, MobileStylePanel, Content
 import ExportModal from './components/ExportModal';
 import RichTextToolbar from './components/RichTextToolbar';
 import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
+import { toPng } from 'html-to-image';
 
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
 
-declare const html2canvas: any;
+async function getEmbedFontCSS() {
+    try {
+        const res = await fetch(GOOGLE_FONTS_URL);
+        const css = await res.text();
+        
+        const urls: string[] = [];
+        // Extract URLs
+        css.replace(/url\(([^)]+)\)/g, (match, url) => {
+            urls.push(url.replace(/['"]/g, '').trim());
+            return match;
+        });
+
+        const uniqueUrls = [...new Set(urls)];
+        const fontMap = new Map<string, string>();
+
+        await Promise.all(uniqueUrls.map(async (url) => {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                await new Promise((resolve) => {
+                    reader.onloadend = () => resolve(null);
+                    reader.readAsDataURL(blob);
+                });
+                if (reader.result) {
+                    fontMap.set(url, reader.result as string);
+                }
+            } catch (e) {
+                console.warn('Failed to load font', url, e);
+            }
+        }));
+
+        let newCss = css;
+        fontMap.forEach((base64, url) => {
+            newCss = newCss.split(url).join(base64);
+        });
+        
+        return newCss;
+    } catch (e) {
+        console.error('Error embedding fonts', e);
+        return '';
+    }
+}
 
 const App: React.FC = () => {
   const [state, setState] = useState<CoverState>(() => {
@@ -176,22 +220,21 @@ const App: React.FC = () => {
 
     try {
       await document.fonts.ready;
-      await new Promise(resolve => setTimeout(resolve, 100)); 
+      // Slight delay to ensure any layout shifts from isExporting state are done
+      await new Promise(resolve => setTimeout(resolve, 200)); 
 
-      const elementToCapture = previewRef.current;
-      const desiredWidth = 1600; // Updated to 1600 based on request
-      const scale = desiredWidth / elementToCapture.offsetWidth;
+      // Manually fetch and embed fonts to avoid html-to-image scanning all global stylesheets
+      // which can cause CORS errors with platform-injected styles (e.g. ai.studio/index.css)
+      const fontCss = await getEmbedFontCSS();
 
-      const canvas = await html2canvas(elementToCapture, {
-        useCORS: true,
-        scale: scale,
+      const dataUrl = await toPng(previewRef.current, {
+        cacheBust: true,
+        pixelRatio: 2, // 2x resolution for better quality
         backgroundColor: state.backgroundColor,
-        logging: false,
-        letterRendering: true,
+        fontEmbedCSS: fontCss, // Providing this bypasses the automatic stylesheet scanning
       });
 
-      const image = canvas.toDataURL('image/png');
-      setExportImage(image);
+      setExportImage(dataUrl);
     } catch (error) {
       console.error("Export failed:", error);
       alert("导出失败，请重试");
@@ -259,7 +302,7 @@ const App: React.FC = () => {
 
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
             <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start">
-               <div className="transition-all duration-300 w-full md:w-auto p-0 md:p-8 h-full md:h-auto flex justify-center">
+               <div className="transition-all duration-300 w-full md:w-auto p-0 md:p-8 min-h-full md:h-auto flex justify-center">
                   <CoverPreview 
                     ref={previewRef}
                     state={state}
