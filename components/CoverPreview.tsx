@@ -35,13 +35,12 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   const editableRef = useRef<HTMLDivElement>(null);
   const isComposing = useRef(false);
 
-  // Style hack to prevent Chrome/Android Text Inflation
-  // Use 100% instead of none for better compatibility
+  // Strictly disable text inflation without using max-height hacks
   const noInflationStyle: React.CSSProperties = {
-     maxHeight: '999999px',
-     WebkitTextSizeAdjust: '100%',
+     WebkitTextSizeAdjust: 'none',
+     MozTextSizeAdjust: 'none',
      // @ts-ignore
-     textSizeAdjust: '100%' 
+     textSizeAdjust: 'none' 
   };
 
   useEffect(() => {
@@ -461,8 +460,9 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
         flexDirection: 'column',
         width: '400px',
         minWidth: '400px',
-        textSizeAdjust: '100%',
-        WebkitTextSizeAdjust: '100%'
+        textSizeAdjust: 'none',
+        WebkitTextSizeAdjust: 'none',
+        MozTextSizeAdjust: 'none'
       }}
     >
       <div 

@@ -32,9 +32,12 @@
     <style>
       html {
         font-size: 16px;
-        -webkit-text-size-adjust: 100%;
-        text-size-adjust: 100%;
+        -webkit-text-size-adjust: none; /* Strictly disable inflation */
+        -moz-text-size-adjust: none;
+        -ms-text-size-adjust: none;
+        text-size-adjust: none;
         height: 100%;
+        touch-action: manipulation; /* Disable double-tap zoom */
       }
       body {
         height: 100%;
@@ -42,10 +45,9 @@
         overflow: hidden;
         position: fixed;
         background-color: #f3f4f6;
-        -webkit-text-size-adjust: 100%;
-        text-size-adjust: 100%;
-        /* Chrome Android Font Boosting Hack */
-        max-height: 999999px; 
+        -webkit-text-size-adjust: none;
+        text-size-adjust: none;
+        overscroll-behavior: none; /* Prevent bounce */
       }
       #root {
         height: 100%;
