@@ -229,7 +229,7 @@ const App: React.FC = () => {
 
       const dataUrl = await toPng(previewRef.current, {
         cacheBust: true,
-        pixelRatio: 2, // 2x resolution for better quality
+        pixelRatio: 4, // 4x resolution. 400px width * 4 = 1600px.
         backgroundColor: state.backgroundColor,
         fontEmbedCSS: fontCss, // Providing this bypasses the automatic stylesheet scanning
       });
@@ -301,8 +301,8 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start">
-               <div className="transition-all duration-300 w-full md:w-auto p-0 md:p-8 min-h-full md:h-auto flex justify-center">
+            <div className="flex-1 overflow-y-auto overflow-x-auto flex justify-center custom-scrollbar items-start">
+               <div className="transition-all duration-300 w-auto p-0 md:p-8 min-h-full md:h-auto flex justify-center">
                   <CoverPreview 
                     ref={previewRef}
                     state={state}

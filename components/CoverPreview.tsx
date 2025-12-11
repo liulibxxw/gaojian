@@ -212,7 +212,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                     ))}
                 </div>
 
-                <h1 className={`leading-none mb-2 relative z-10 ${getTitleFontClass()}`} style={{ color: textColor }}>
+                <h1 className={`leading-none mb-2 relative z-10 whitespace-nowrap ${getTitleFontClass()}`} style={{ color: textColor }}>
                   {title}
                 </h1>
                 <div className="w-full h-px opacity-20 my-2" style={{ backgroundColor: textColor }}></div>
@@ -291,7 +291,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
              <span className={`text-xs mb-1 tracking-[0.3em] uppercase opacity-70 ${getBodyFontClass()}`} style={{ color: textColor }}>
                 The Story of
              </span>
-             <h1 className={`mb-2 leading-tight ${getTitleFontClass()}`} style={{ color: textColor }}>
+             <h1 className={`mb-2 leading-tight whitespace-nowrap ${getTitleFontClass()}`} style={{ color: textColor }}>
               {title}
             </h1>
              <span className={`px-4 py-1 border-y border-current text-xs tracking-widest uppercase opacity-80 ${getBodyFontClass()}`} style={{ color: textColor, borderColor: `${textColor}40` }}>
@@ -438,10 +438,10 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   return (
     <div 
       ref={ref}
-      className={`relative shadow-2xl antialiased overflow-hidden w-full md:w-[400px] ${
+      className={`relative shadow-2xl antialiased overflow-hidden w-[400px] shrink-0 ${
         isLongText 
           ? 'h-auto min-h-[600px] md:min-h-[712px]' 
-          : (isExporting ? 'aspect-[4/5]' : 'h-full md:h-auto md:aspect-[4/5]')
+          : 'aspect-[4/5] h-auto'
       }`}
       style={{ 
         backgroundColor: backgroundColor,
