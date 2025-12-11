@@ -119,10 +119,12 @@ const App: React.FC = () => {
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
+  const [previewScale, setPreviewScale] = useState(1);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const bgColorPaletteRef = useRef<HTMLDivElement>(null);
   const bgColorButtonRef = useRef<HTMLButtonElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     localStorage.setItem('coverState_v2', JSON.stringify(state));
@@ -152,6 +154,27 @@ const App: React.FC = () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showBgColorPalette]);
+
+  useEffect(() => {
+    const handleResize = () => {
+        if (previewContainerRef.current) {
+            const width = previewContainerRef.current.clientWidth;
+            // 400px is the card width. 32px safety margin.
+            if (width < 432) {
+                setPreviewScale((width - 32) / 400);
+            } else {
+                setPreviewScale(1);
+            }
+        }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    // Double check after layout settlement
+    setTimeout(handleResize, 100);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleStateChange = useCallback((newState: Partial<CoverState>) => {
     setState(prev => ({ ...prev, ...newState }));
@@ -328,14 +351,19 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start">
+            <div 
+                ref={previewContainerRef}
+                className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start"
+            >
                <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center items-center">
-                  <CoverPreview 
-                    ref={previewRef}
-                    state={state}
-                    onBodyTextChange={(val) => handleStateChange({ bodyText: val })}
-                    isExporting={isExporting}
-                  />
+                  <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'center center' }}>
+                    <CoverPreview 
+                        ref={previewRef}
+                        state={state}
+                        onBodyTextChange={(val) => handleStateChange({ bodyText: val })}
+                        isExporting={isExporting}
+                    />
+                  </div>
                </div>
             </div>
 
