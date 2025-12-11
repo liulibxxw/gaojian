@@ -329,7 +329,7 @@ const App: React.FC = () => {
 
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
             <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start">
-               <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center">
+               <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center items-center">
                   <CoverPreview 
                     ref={previewRef}
                     state={state}
