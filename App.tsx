@@ -306,7 +306,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-gray-50 overflow-hidden text-gray-800">
+    <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full bg-gray-50 overflow-hidden text-gray-800">
       
       <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
         <EditorControls 
@@ -323,7 +323,7 @@ const App: React.FC = () => {
       </div>
 
       <div className="flex-1 relative flex flex-col h-full overflow-hidden">
-        <div className="lg:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-center px-4 shrink-0 z-20">
+        <div className="lg:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-center px-4 shrink-0 z-20 flex-none">
             <span className="font-bold text-gray-800">衔书又止</span>
         </div>
 

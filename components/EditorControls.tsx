@@ -455,7 +455,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       <div className="hidden md:block p-6 pb-2">
         <div className="flex justify-between items-center mb-1">
           <div>
-             <h2 className="text-2xl font-bold text-gray-900">封面编辑器</h2>
+             <h2 className="text-2xl font-bold text-gray-900">衔书又止</h2>
              <p className="text-gray-400 text-xs mt-1">定制你的专属小红书封面</p>
           </div>
         </div>
