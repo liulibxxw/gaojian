@@ -446,7 +446,9 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       style={{ 
         backgroundColor: backgroundColor,
         display: 'flex', 
-        flexDirection: 'column'
+        flexDirection: 'column',
+        textSizeAdjust: '100%',
+        WebkitTextSizeAdjust: '100%'
       }}
     >
       <div 

@@ -30,7 +30,12 @@
       }
     </script>
     <style>
-      html, body {
+      html {
+        font-size: 16px; /* Fix root font size for consistent rem units */
+        -webkit-text-size-adjust: 100%; /* Prevent iOS text inflation */
+        text-size-adjust: 100%;
+      }
+      body {
         height: 100%;
         width: 100%;
         overflow: hidden;
