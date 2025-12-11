@@ -35,12 +35,14 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   const editableRef = useRef<HTMLDivElement>(null);
   const isComposing = useRef(false);
 
-  // Strictly disable text inflation without using max-height hacks
+  // Strictly disable text inflation with multiple strategies
   const noInflationStyle: React.CSSProperties = {
      WebkitTextSizeAdjust: 'none',
      MozTextSizeAdjust: 'none',
      // @ts-ignore
-     textSizeAdjust: 'none' 
+     textSizeAdjust: 'none',
+     // Adding a large max-height can sometimes trick browsers into thinking the container is fixed
+     maxHeight: '999999px'
   };
 
   useEffect(() => {

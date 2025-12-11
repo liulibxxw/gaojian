@@ -30,14 +30,15 @@
       }
     </script>
     <style>
+      /* Use !important to override Tailwind's preflight styles which set this to 100% */
       html {
         font-size: 16px;
-        -webkit-text-size-adjust: none; /* Strictly disable inflation */
-        -moz-text-size-adjust: none;
-        -ms-text-size-adjust: none;
-        text-size-adjust: none;
+        -webkit-text-size-adjust: none !important;
+        -moz-text-size-adjust: none !important;
+        -ms-text-size-adjust: none !important;
+        text-size-adjust: none !important;
         height: 100%;
-        touch-action: manipulation; /* Disable double-tap zoom */
+        touch-action: manipulation;
       }
       body {
         height: 100%;
@@ -45,9 +46,11 @@
         overflow: hidden;
         position: fixed;
         background-color: #f3f4f6;
-        -webkit-text-size-adjust: none;
-        text-size-adjust: none;
-        overscroll-behavior: none; /* Prevent bounce */
+        -webkit-text-size-adjust: none !important;
+        -moz-text-size-adjust: none !important;
+        -ms-text-size-adjust: none !important;
+        text-size-adjust: none !important;
+        overscroll-behavior: none;
       }
       #root {
         height: 100%;
