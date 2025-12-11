@@ -1,5 +1,5 @@
 // [用户要求注释]：应用的所有默认初始设置，包括但不限于初始标题、副标题、分类、布局方案、字体、草稿内容以及色彩方案，均已根据明确需求最终确定。在没有再次获得清晰指令前，绝对禁止对这些默认值进行任何形式的修改。
-export const APP_NAME = "Xiaohongshu Cover Gen";
+export const APP_NAME = "衔书又止";
 
 export enum PastelColor {
   Cream = '#F8EFD3',

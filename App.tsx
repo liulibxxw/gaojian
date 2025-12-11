@@ -227,12 +227,39 @@ const App: React.FC = () => {
       // which can cause CORS errors with platform-injected styles (e.g. ai.studio/index.css)
       const fontCss = await getEmbedFontCSS();
 
-      const dataUrl = await toPng(previewRef.current, {
+      // Configure export options based on mode to ensure correct dimensions
+      const exportOptions: any = {
         cacheBust: true,
-        pixelRatio: 4, // 4x resolution. 400px width * 4 = 1600px.
+        pixelRatio: 4, 
         backgroundColor: state.backgroundColor,
-        fontEmbedCSS: fontCss, // Providing this bypasses the automatic stylesheet scanning
-      });
+        fontEmbedCSS: fontCss,
+      };
+
+      // For cover mode, we force the dimensions to be 400x500 (before pixelRatio) 
+      // to ensure the output is exactly 1600x2000, even if the preview is scaled down on mobile.
+      if (state.mode === 'cover') {
+        exportOptions.width = 400;
+        exportOptions.height = 500;
+        exportOptions.style = {
+           width: '400px',
+           height: '500px',
+           maxWidth: 'none',
+           maxHeight: 'none',
+           transform: 'none',
+           margin: '0',
+        };
+      } else {
+        // For long text, we ensure width is 400 (before pixelRatio)
+        exportOptions.width = 400;
+         exportOptions.style = {
+           width: '400px',
+           maxWidth: 'none',
+           transform: 'none',
+           margin: '0',
+        };
+      }
+
+      const dataUrl = await toPng(previewRef.current, exportOptions);
 
       setExportImage(dataUrl);
     } catch (error) {
@@ -297,12 +324,12 @@ const App: React.FC = () => {
 
       <div className="flex-1 relative flex flex-col h-full overflow-hidden">
         <div className="lg:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-center px-4 shrink-0 z-20">
-            <span className="font-bold text-gray-800">封面设计</span>
+            <span className="font-bold text-gray-800">衔书又止</span>
         </div>
 
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
-            <div className="flex-1 overflow-y-auto overflow-x-auto flex justify-center custom-scrollbar items-start">
-               <div className="transition-all duration-300 w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start">
+               <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center">
                   <CoverPreview 
                     ref={previewRef}
                     state={state}
