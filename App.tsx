@@ -279,9 +279,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden text-gray-800">
+    <div className="flex flex-col lg:flex-row h-screen bg-gray-50 overflow-hidden text-gray-800">
       
-      <div className="hidden md:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
+      <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
         <EditorControls 
           state={state} 
           onChange={handleStateChange}
@@ -296,13 +296,13 @@ const App: React.FC = () => {
       </div>
 
       <div className="flex-1 relative flex flex-col h-full overflow-hidden">
-        <div className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-center px-4 shrink-0 z-20">
+        <div className="lg:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-center px-4 shrink-0 z-20">
             <span className="font-bold text-gray-800">封面设计</span>
         </div>
 
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
             <div className="flex-1 overflow-y-auto overflow-x-auto flex justify-center custom-scrollbar items-start">
-               <div className="transition-all duration-300 w-auto p-0 md:p-8 min-h-full md:h-auto flex justify-center">
+               <div className="transition-all duration-300 w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center">
                   <CoverPreview 
                     ref={previewRef}
                     state={state}
@@ -333,7 +333,7 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div className="md:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
+            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 

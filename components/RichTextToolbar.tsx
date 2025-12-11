@@ -137,7 +137,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
     <>
         <div 
             ref={toolbarRef}
-            className="w-full bg-white/95 backdrop-blur-md px-4 py-3 flex items-center justify-around animate-in slide-in-from-bottom-2 duration-200 md:hidden border-t border-gray-100/50"
+            className="w-full bg-white/95 backdrop-blur-md px-4 py-3 flex items-center justify-around animate-in slide-in-from-bottom-2 duration-200 lg:hidden border-t border-gray-100/50"
             onMouseDown={preventFocusLoss}
             onTouchStart={preventFocusLoss}
         >
@@ -219,7 +219,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
         {(showTextColorPalette || showSizePalette) && palettePosition && (
             <div 
                 ref={paletteRef}
-                className="fixed z-[60] bg-white border border-gray-100 shadow-xl rounded-xl p-3 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2 fade-in md:hidden"
+                className="fixed z-[60] bg-white border border-gray-100 shadow-xl rounded-xl p-3 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2 fade-in lg:hidden"
                 style={{
                     left: palettePosition.left,
                     bottom: palettePosition.bottom,
