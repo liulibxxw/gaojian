@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Xiaohongshu Cover Designer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,6 @@
     <style>
       body {
         background-color: #f3f4f6;
-        touch-action: pan-x pan-y;
       }
       ::-webkit-scrollbar {
         display: none;
@@ -53,8 +52,7 @@
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "vite": "https://esm.sh/vite@^7.2.7",
     "path": "https://esm.sh/path@^0.12.7",
-    "url": "https://esm.sh/url@^0.11.4",
-    "dom-to-image-more": "https://esm.sh/dom-to-image-more@3.2.0"
+    "url": "https://esm.sh/url@^0.11.4"
   }
 }
 </script>
@@ -62,6 +60,7 @@
 </head>
   <body>
     <div id="root"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
