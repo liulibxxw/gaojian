@@ -39,9 +39,9 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   // Elements with max-height defined are not boosted by the algorithm.
   const noInflationStyle: React.CSSProperties = {
      maxHeight: '999999px',
-     WebkitTextSizeAdjust: '100%',
+     WebkitTextSizeAdjust: 'none',
      // @ts-ignore
-     textSizeAdjust: '100%' 
+     textSizeAdjust: 'none' 
   };
 
   useEffect(() => {
@@ -456,8 +456,10 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
         backgroundColor: backgroundColor,
         display: 'flex', 
         flexDirection: 'column',
-        textSizeAdjust: '100%',
-        WebkitTextSizeAdjust: '100%'
+        width: '400px',
+        minWidth: '400px',
+        textSizeAdjust: 'none',
+        WebkitTextSizeAdjust: 'none'
       }}
     >
       <div 
