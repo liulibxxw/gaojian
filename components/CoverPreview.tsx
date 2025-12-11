@@ -41,10 +41,14 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   // 2. contain: 'layout style': 创建独立的布局上下文，防止外部 CSS 或浏览器启发式算法影响内部计算。
   // 3. transform: 'translateZ(0)': 强制提升为 GPU 合成层，规避部分移动端 WebView 的 CPU 渲染层字体对齐问题。
   // 4. fontSynthesis: 'none': 禁止浏览器合成粗体或斜体，保证字体度量一致。
+  // 5. WebkitTextSizeAdjust: 'none': 显式禁止 Webkit 内核浏览器的文字膨胀（Font Boosting）。
   const renderingIsolation: React.CSSProperties = {
     textRendering: 'geometricPrecision',
     WebkitFontSmoothing: 'antialiased',
     MozOsxFontSmoothing: 'grayscale',
+    WebkitTextSizeAdjust: 'none',
+    // @ts-ignore
+    textSizeAdjust: 'none',
     transform: 'translateZ(0)',
     contain: 'layout style',
     width: '400px',
