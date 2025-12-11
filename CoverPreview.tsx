@@ -438,10 +438,10 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   return (
     <div 
       ref={ref}
-      className={`relative shadow-2xl antialiased overflow-hidden w-full max-w-[400px] shrink-0 ${
+      className={`relative shadow-2xl antialiased overflow-hidden w-[400px] shrink-0 ${
         isLongText 
           ? 'h-auto min-h-[600px] md:min-h-[712px]' 
-          : 'aspect-[4/5] h-auto'
+          : 'h-[500px]'
       }`}
       style={{ 
         backgroundColor: backgroundColor,

@@ -306,7 +306,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full bg-gray-50 overflow-hidden text-gray-800">
+    <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full supports-[height:100dvh]:h-[100dvh] bg-gray-50 overflow-hidden text-gray-800">
       
       <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
         <EditorControls 
