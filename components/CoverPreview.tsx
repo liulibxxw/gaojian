@@ -25,6 +25,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     bodyTextAlign = 'text-justify', 
   } = state;
 
+  // 严格保留原有的逻辑判断
   const isJianghuTheme = title === '江湖就是要打打杀杀';
   const effectiveCategory = (isJianghuTheme && category === '文稿创作') ? '文稿、短打' : category;
   
@@ -35,17 +36,26 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   const editableRef = useRef<HTMLDivElement>(null);
   const isComposing = useRef(false);
 
-  const isLongText = mode === 'long-text';
-
-  // Strictly disable text inflation with multiple strategies
-  // maxHeight: 100% is safe for fixed height containers (cover mode)
-  // maxHeight: 999999px is for auto height (long text)
-  const noInflationStyle: React.CSSProperties = {
-     WebkitTextSizeAdjust: 'none',
-     MozTextSizeAdjust: 'none',
-     // @ts-ignore
-     textSizeAdjust: 'none',
-     maxHeight: isLongText ? '999999px' : '100%'
+  // 【全新方案】渲染隔离样式：
+  // 1. geometricPrecision: 强制浏览器使用几何精度渲染字体，禁止为了“易读性”而自动膨胀字体。
+  // 2. contain: 'layout style': 创建独立的布局上下文，防止外部 CSS 或浏览器启发式算法影响内部计算。
+  // 3. transform: 'translateZ(0)': 强制提升为 GPU 合成层，规避部分移动端 WebView 的 CPU 渲染层字体对齐问题。
+  // 4. fontSynthesis: 'none': 禁止浏览器合成粗体或斜体，保证字体度量一致。
+  const renderingIsolation: React.CSSProperties = {
+    textRendering: 'geometricPrecision',
+    WebkitFontSmoothing: 'antialiased',
+    MozOsxFontSmoothing: 'grayscale',
+    transform: 'translateZ(0)',
+    contain: 'layout style',
+    width: '400px',
+    minWidth: '400px',
+    fontSynthesis: 'none',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: backgroundColor,
+    // 确保在长图模式下也能维持宽度约束
+    maxWidth: '400px',
   };
 
   useEffect(() => {
@@ -104,6 +114,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       }
   };
 
+  const isLongText = mode === 'long-text';
   const flexGrowClass = isLongText ? 'flex-auto' : 'flex-1';
   const minHeightClass = isLongText ? '' : 'min-h-0';
 
@@ -190,7 +201,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       return (
         <div 
           className={`relative z-10 p-6 w-full flex flex-col justify-between ${isLongText ? 'flex-auto' : 'h-full overflow-hidden'}`}
-          style={noInflationStyle}
         >
           {renderTechDecorations()}
 
@@ -225,11 +235,11 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                     ))}
                 </div>
 
-                <h1 className={`leading-none mb-2 relative z-10 whitespace-nowrap ${getTitleFontClass()}`} style={{ ...noInflationStyle, color: textColor }}>
+                <h1 className={`leading-none mb-2 relative z-10 whitespace-nowrap ${getTitleFontClass()}`} style={{ color: textColor }}>
                   {title}
                 </h1>
                 <div className="w-full h-px opacity-20 my-2" style={{ backgroundColor: textColor }}></div>
-                <p className={`text-sm font-bold opacity-80 ${getBodyFontClass()}`} style={{ ...noInflationStyle, color: textColor }}>
+                <p className={`text-sm font-bold opacity-80 ${getBodyFontClass()}`} style={{ color: textColor }}>
                   / {subtitle}
                 </p>
               </div>
@@ -258,7 +268,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                       onCompositionEnd={() => isComposing.current = false}
                       suppressContentEditableWarning={true}
                       className={`${getBodyClasses()} w-full p-0 m-0 block opacity-90 transform-none ${isLongText ? 'h-auto overflow-visible min-h-[100px]' : 'h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]'}`}
-                      style={{ ...noInflationStyle, color: textColor }}
+                      style={{ color: textColor }}
                     />
                 </div>
               </div>
@@ -295,20 +305,19 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       return (
         <div 
           className={`relative z-10 p-8 flex flex-col ${flexGrowClass}`}
-          style={noInflationStyle}
         >
           {renderVintageDecorations()}
 
           <div className="flex flex-col items-center text-center mt-2 mb-2 relative shrink-0 flex-none">
              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120%] h-full bg-white/30 blur-xl rounded-full -z-10"></div>
              
-             <span className={`text-xs mb-1 tracking-[0.3em] uppercase opacity-70 ${getBodyFontClass()}`} style={{ ...noInflationStyle, color: textColor }}>
+             <span className={`text-xs mb-1 tracking-[0.3em] uppercase opacity-70 ${getBodyFontClass()}`} style={{ color: textColor }}>
                 The Story of
              </span>
-             <h1 className={`mb-2 leading-tight whitespace-nowrap ${getTitleFontClass()}`} style={{ ...noInflationStyle, color: textColor }}>
+             <h1 className={`mb-2 leading-tight whitespace-nowrap ${getTitleFontClass()}`} style={{ color: textColor }}>
               {title}
             </h1>
-             <span className={`px-4 py-1 border-y border-current text-xs tracking-widest uppercase opacity-80 ${getBodyFontClass()}`} style={{ ...noInflationStyle, color: textColor, borderColor: `${textColor}40` }}>
+             <span className={`px-4 py-1 border-y border-current text-xs tracking-widest uppercase opacity-80 ${getBodyFontClass()}`} style={{ color: textColor, borderColor: `${textColor}40` }}>
                {subtitle}
              </span>
           </div>
@@ -331,7 +340,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                 onCompositionEnd={() => isComposing.current = false}
                 suppressContentEditableWarning={true}
                 className={`${getBodyClasses()} px-2 w-full outline-none ${isLongText ? 'h-auto' : 'h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]'}`}
-                style={{ ...noInflationStyle, color: textColor }}
+                style={{ color: textColor }}
               />
           </div>
 
@@ -370,7 +379,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     return (
       <div 
         className={`relative z-10 p-6 flex flex-col ${flexGrowClass}`}
-        style={noInflationStyle}
       >
         <div className="absolute top-0 right-0 w-1/2 h-full opacity-10" style={{ background: `linear-gradient(to left, ${accentColor}, transparent)` }}></div>
         <div className="absolute top-6 left-6 w-12 h-1 bg-current" style={{ color: textColor }}></div>
@@ -386,14 +394,14 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
           >
             
             <div className="flex flex-col items-center mb-4 w-full shrink-0 flex-none">
-              <h2 className={`w-full text-center leading-tight whitespace-nowrap z-20 ${getTitleFontClass()}`} style={{...noInflationStyle}}>
+              <h2 className={`w-full text-center leading-tight whitespace-nowrap z-20 ${getTitleFontClass()}`}>
                 {title}
               </h2>
 
               <div className="w-full flex justify-between items-end mt-4 min-h-[40px] gap-4 relative z-10">
                  <div className="flex-1 pb-1 min-w-0">
                     <div className="inline-block px-3 py-1 text-white shadow-md transform -rotate-1 origin-bottom-left whitespace-nowrap max-w-full overflow-hidden text-ellipsis" style={{ backgroundColor: textColor }}>
-                       <p className={`text-xl md:text-2xl font-bold ${getBodyFontClass()} whitespace-nowrap overflow-hidden text-ellipsis`} style={{...noInflationStyle}}>
+                       <p className={`text-xl md:text-2xl font-bold ${getBodyFontClass()} whitespace-nowrap overflow-hidden text-ellipsis`}>
                          {subtitle}
                        </p>
                     </div>
@@ -434,7 +442,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                   onCompositionEnd={() => isComposing.current = false}
                   suppressContentEditableWarning={true}
                   className={`${getBodyClasses()} opacity-90 w-full outline-none`}
-                  style={{ ...noInflationStyle, color: textColor }}
+                  style={{ color: textColor }}
                 />
             </div>
             
@@ -458,16 +466,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
           ? 'h-auto min-h-[600px] md:min-h-[712px]' 
           : 'h-[500px]'
       }`}
-      style={{ 
-        backgroundColor: backgroundColor,
-        display: 'flex', 
-        flexDirection: 'column',
-        width: '400px',
-        minWidth: '400px',
-        textSizeAdjust: 'none',
-        WebkitTextSizeAdjust: 'none',
-        MozTextSizeAdjust: 'none'
-      }}
+      style={renderingIsolation}
     >
       <div 
         className="absolute inset-0 z-0"
