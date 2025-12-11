@@ -36,21 +36,14 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   const editableRef = useRef<HTMLDivElement>(null);
   const isComposing = useRef(false);
 
-  // 【全新方案】渲染隔离样式 - 增强版（针对 VIVO/OPPO 等国产浏览器优化）：
-  // 1. geometricPrecision: 强制几何精度。
-  // 2. WebkitTextSizeAdjust: '100%': 使用 100% 替代 none，因为部分定制 WebView 内核对 none 的处理存在 bug。
-  // 3. backgroundImage: 增加透明渐变背景，诱骗浏览器认为容器属于“复杂图形区域”从而禁用文本膨胀算法。
-  // 4. transform: 'translate3d(0,0,0)': 强制提升为 GPU 合成层，规避 CPU 渲染层的字体抖动。
-  // 5. contain: 'layout style paint': 彻底的 CSS 隔离。
+  // 【还原方案】渲染隔离样式：
+  // 恢复到标准的渲染隔离策略，移除针对特定浏览器的 unstable hacks
   const renderingIsolation: React.CSSProperties = {
     textRendering: 'geometricPrecision',
     WebkitFontSmoothing: 'antialiased',
     MozOsxFontSmoothing: 'grayscale',
-    WebkitTextSizeAdjust: '100%',
-    // @ts-ignore
-    textSizeAdjust: '100%',
-    transform: 'translate3d(0, 0, 0)',
-    contain: 'layout style paint',
+    transform: 'translateZ(0)',
+    contain: 'layout style',
     width: '400px',
     minWidth: '400px',
     maxWidth: '400px',
@@ -59,7 +52,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: backgroundColor,
-    backgroundImage: 'linear-gradient(rgba(255,255,255,0), rgba(255,255,255,0))',
   };
 
   useEffect(() => {
@@ -272,12 +264,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                       onCompositionEnd={() => isComposing.current = false}
                       suppressContentEditableWarning={true}
                       className={`${getBodyClasses()} w-full p-0 m-0 block opacity-90 transform-none ${isLongText ? 'h-auto overflow-visible min-h-[100px]' : 'h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]'}`}
-                      style={{ 
-                        color: textColor,
-                        WebkitTextSizeAdjust: '100%',
-                        // @ts-ignore
-                        textSizeAdjust: '100%'
-                      }}
+                      style={{ color: textColor }}
                     />
                 </div>
               </div>
@@ -349,12 +336,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                 onCompositionEnd={() => isComposing.current = false}
                 suppressContentEditableWarning={true}
                 className={`${getBodyClasses()} px-2 w-full outline-none ${isLongText ? 'h-auto' : 'h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]'}`}
-                style={{ 
-                    color: textColor,
-                    WebkitTextSizeAdjust: '100%',
-                    // @ts-ignore
-                    textSizeAdjust: '100%'
-                }}
+                style={{ color: textColor }}
               />
           </div>
 
@@ -456,12 +438,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                   onCompositionEnd={() => isComposing.current = false}
                   suppressContentEditableWarning={true}
                   className={`${getBodyClasses()} opacity-90 w-full outline-none`}
-                  style={{ 
-                      color: textColor,
-                      WebkitTextSizeAdjust: '100%',
-                      // @ts-ignore
-                      textSizeAdjust: '100%'
-                  }}
+                  style={{ color: textColor }}
                 />
             </div>
             
