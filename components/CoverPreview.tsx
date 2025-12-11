@@ -35,14 +35,17 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   const editableRef = useRef<HTMLDivElement>(null);
   const isComposing = useRef(false);
 
+  const isLongText = mode === 'long-text';
+
   // Strictly disable text inflation with multiple strategies
+  // maxHeight: 100% is safe for fixed height containers (cover mode)
+  // maxHeight: 999999px is for auto height (long text)
   const noInflationStyle: React.CSSProperties = {
      WebkitTextSizeAdjust: 'none',
      MozTextSizeAdjust: 'none',
      // @ts-ignore
      textSizeAdjust: 'none',
-     // Adding a large max-height can sometimes trick browsers into thinking the container is fixed
-     maxHeight: '999999px'
+     maxHeight: isLongText ? '999999px' : '100%'
   };
 
   useEffect(() => {
@@ -101,7 +104,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       }
   };
 
-  const isLongText = mode === 'long-text';
   const flexGrowClass = isLongText ? 'flex-auto' : 'flex-1';
   const minHeightClass = isLongText ? '' : 'min-h-0';
 
