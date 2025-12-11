@@ -1,4 +1,4 @@
-import React, { useEffect, useState, forwardRef, useRef } from 'react';
+import React, { useEffect, useState, forwardRef, useRef, useLayoutEffect } from 'react';
 import { CoverState } from '../types';
 
 interface CoverPreviewProps {
@@ -6,6 +6,60 @@ interface CoverPreviewProps {
   onBodyTextChange: (text: string) => void;
   isExporting?: boolean;
 }
+
+// Helper component for auto-scaling text
+const AutoFitText = ({ 
+    text, 
+    className, 
+    style, 
+    align = 'left',
+    minScale = 0.5
+}: { 
+    text: string, 
+    className?: string, 
+    style?: React.CSSProperties, 
+    align?: 'left' | 'center' | 'right',
+    minScale?: number
+}) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const [scale, setScale] = useState(1);
+
+    useLayoutEffect(() => {
+        const container = containerRef.current;
+        const textEl = textRef.current;
+        if (!container || !textEl) return;
+
+        const containerWidth = container.offsetWidth;
+        const textWidth = textEl.scrollWidth;
+
+        if (textWidth > containerWidth) {
+            const newScale = Math.max(minScale, containerWidth / textWidth);
+            setScale(newScale);
+        } else {
+            setScale(1);
+        }
+    }, [text, className]);
+
+    const originClass = align === 'center' ? 'origin-center' : (align === 'right' ? 'origin-right' : 'origin-left');
+    const justifyClass = align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start');
+
+    return (
+        <div ref={containerRef} className={`w-full overflow-hidden flex ${justifyClass}`} style={{ whiteSpace: 'nowrap' }}>
+            <span
+                ref={textRef}
+                className={`block whitespace-nowrap ${originClass} ${className || ''}`}
+                style={{ 
+                    ...style, 
+                    transform: `scale(${scale})`, 
+                    display: 'inline-block' 
+                }}
+            >
+                {text}
+            </span>
+        </div>
+    );
+};
 
 const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onBodyTextChange, isExporting = false }, ref) => {
   const { 
@@ -59,10 +113,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
 
   useEffect(() => {
     const el = editableRef.current;
-    // This effect synchronizes the content of the editable div with the `bodyText` state.
-    // It's crucial for correctly displaying text when a draft is loaded or the layout mode changes.
-    // It checks `isComposing` to avoid interrupting complex input methods (like Chinese Pinyin).
-    // The main logic is to update the div's HTML if it doesn't match the state.
     if (el && el.innerHTML !== bodyText && !isComposing.current) {
       el.innerHTML = bodyText;
     }
@@ -111,24 +161,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
 
   const getTitleFontClass = () => {
     const baseFont = getFontClass(titleFont);
-    const length = title.length;
-    let sizeClass = 'text-4xl';
-    
-    if (layoutStyle === 'split') {
-        if (length > 12) sizeClass = 'text-2xl';
-        else if (length > 8) sizeClass = 'text-3xl';
-        else sizeClass = 'text-5xl';
-    } else if (layoutStyle === 'minimal') {
-        if (length > 14) sizeClass = 'text-2xl';
-        else if (length > 10) sizeClass = 'text-3xl';
-        else sizeClass = 'text-4xl';
-    } else {
-        if (length > 10) sizeClass = 'text-2xl';
-        else if (length > 7) sizeClass = 'text-3xl';
-        else sizeClass = 'text-4xl';
-    }
-
-    return `${baseFont} ${sizeClass}`;
+    // Base size is relative now since we auto-scale
+    return `${baseFont} text-5xl`;
   };
 
   const getBodyFontClass = () => {
@@ -214,13 +248,23 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                     ))}
                 </div>
 
-                <h1 className={`leading-none mb-2 relative z-10 ${getTitleFontClass()}`} style={{ color: textColor }}>
-                  {title}
-                </h1>
+                <div className="mb-2 relative z-10" style={{ color: textColor }}>
+                    <AutoFitText 
+                        text={title} 
+                        className={`leading-none ${getTitleFontClass()}`}
+                        align="left"
+                    />
+                </div>
+
                 <div className="w-full h-px opacity-20 my-2" style={{ backgroundColor: textColor }}></div>
-                <p className={`text-sm font-bold opacity-80 ${getBodyFontClass()}`} style={{ color: textColor }}>
-                  / {subtitle}
-                </p>
+                
+                <div className="w-full" style={{ color: textColor }}>
+                    <AutoFitText 
+                        text={`/ ${subtitle}`}
+                        className={`text-sm font-bold opacity-80 ${getBodyFontClass()}`}
+                        align="left"
+                    />
+                </div>
               </div>
 
               <div className={`relative mt-1 flex-1 flex flex-col ${isLongText ? '' : 'min-h-0'}`}>
@@ -287,18 +331,30 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
         >
           {renderVintageDecorations()}
 
-          <div className="flex flex-col items-center text-center mt-2 mb-2 relative shrink-0 flex-none">
+          <div className="flex flex-col items-center text-center mt-2 mb-2 relative shrink-0 flex-none w-full">
              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[120%] h-full bg-white/30 blur-xl rounded-full -z-10"></div>
              
              <span className={`text-xs mb-1 tracking-[0.3em] uppercase opacity-70 ${getBodyFontClass()}`} style={{ color: textColor }}>
                 The Story of
              </span>
-             <h1 className={`mb-2 leading-tight ${getTitleFontClass()}`} style={{ color: textColor }}>
-              {title}
-            </h1>
-             <span className={`px-4 py-1 border-y border-current text-xs tracking-widest uppercase opacity-80 ${getBodyFontClass()}`} style={{ color: textColor, borderColor: `${textColor}40` }}>
-               {subtitle}
-             </span>
+             
+             <div className="w-full mb-2" style={{ color: textColor }}>
+                 <AutoFitText 
+                    text={title}
+                    className={`leading-tight ${getTitleFontClass()}`}
+                    align="center"
+                 />
+             </div>
+             
+             <div className="w-full" style={{ color: textColor }}>
+                 <div className="inline-block border-y border-current px-4 py-1" style={{ borderColor: `${textColor}40` }}>
+                    <AutoFitText 
+                        text={subtitle}
+                        className={`text-xs tracking-widest uppercase opacity-80 ${getBodyFontClass()}`}
+                        align="center"
+                    />
+                 </div>
+             </div>
           </div>
 
           <div 
@@ -356,6 +412,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       );
     }
 
+    // Default: 'centered' (Magazine/Poster)
     return (
       <div 
         className="relative z-10 p-6 flex flex-col flex-1"
@@ -374,16 +431,23 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
           >
             
             <div className="flex flex-col items-center mb-4 w-full shrink-0 flex-none">
-              <h2 className={`w-full text-center leading-tight whitespace-nowrap z-20 ${getTitleFontClass()}`}>
-                {title}
-              </h2>
+              <div className="w-full z-20" style={{ color: textColor }}>
+                <AutoFitText 
+                    text={title}
+                    className={`leading-tight ${getTitleFontClass()}`}
+                    align="center"
+                />
+              </div>
 
               <div className="w-full flex justify-between items-end mt-4 min-h-[40px] gap-4 relative z-10">
-                 <div className="flex-1 pb-1 min-w-0">
-                    <div className="inline-block px-3 py-1 text-white shadow-md transform -rotate-1 origin-bottom-left whitespace-nowrap max-w-full overflow-hidden text-ellipsis" style={{ backgroundColor: textColor }}>
-                       <p className={`text-xl md:text-2xl font-bold ${getBodyFontClass()} whitespace-nowrap overflow-hidden text-ellipsis`}>
-                         {subtitle}
-                       </p>
+                 <div className="flex-1 pb-1 min-w-0 overflow-hidden">
+                    <div className="inline-block px-3 py-1 text-white shadow-md transform -rotate-1 origin-bottom-left max-w-full" style={{ backgroundColor: textColor }}>
+                       <AutoFitText 
+                          text={subtitle}
+                          className={`text-xl md:text-2xl font-bold ${getBodyFontClass()}`}
+                          style={{ color: 'white' }}
+                          align="left"
+                       />
                     </div>
                  </div>
 
