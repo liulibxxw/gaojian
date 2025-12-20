@@ -151,8 +151,9 @@ export const MobileStylePanel: React.FC<EditorControlsProps> = ({ state, onChang
        <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
           <div>
              <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">布局模板</h4>
-             <div className="grid grid-cols-3 gap-3">
+             <div className="grid grid-cols-4 gap-3">
               {[
+                { id: 'duality', label: '假作真时' },
                 { id: 'minimal', label: '机能档案' },
                 { id: 'split', label: '电影叙事' },
                 { id: 'centered', label: '杂志海报' }
@@ -217,6 +218,20 @@ export const ContentEditorModal: React.FC<{
                 placeholder="输入副标题..."
               />
             </div>
+            
+            {state.layoutStyle === 'duality' && (
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1.5 block uppercase text-purple-600">正文（里象）</label>
+                 <div className="text-[10px] text-gray-400 mb-1">仅在“假作真时”风格下显示</div>
+                 <textarea
+                  value={state.secondaryBodyText}
+                  onChange={(e) => onChange({ secondaryBodyText: e.target.value })}
+                  className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none font-sans-sc text-sm resize-none"
+                  rows={3}
+                  placeholder="第二段正文..."
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -384,6 +399,19 @@ const EditorControls: React.FC<EditorControlsProps> = ({
             placeholder="一句话描述核心亮点"
           />
         </div>
+        
+        {state.layoutStyle === 'duality' && (
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1.5 block">正文（里象）</label>
+            <textarea
+              value={state.secondaryBodyText}
+              onChange={(e) => onChange({ secondaryBodyText: e.target.value })}
+              className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none font-sans-sc transition-all text-sm resize-none"
+              rows={3}
+              placeholder="仅在“假作真时”风格下显示"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -416,8 +444,9 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       <div className="space-y-4">
         <label className="text-sm font-bold text-gray-800">风格与布局</label>
         
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {[
+            { id: 'duality', label: '假作真时' },
             { id: 'minimal', label: '机能档案' },
             { id: 'split', label: '电影叙事' },
             { id: 'centered', label: '杂志海报' }
@@ -425,7 +454,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
             <button
               key={layout.id}
               onClick={() => onChange({ layoutStyle: layout.id as LayoutStyle })}
-              className={`py-2 px-1 rounded-lg border text-xs font-medium transition-all ${state.layoutStyle === layout.id ? 'border-gray-800 bg-gray-800 text-white shadow-md transform scale-[1.02]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+              className={`py-2 px-1 rounded-lg border text-[10px] md:text-xs font-medium transition-all ${state.layoutStyle === layout.id ? 'border-gray-800 bg-gray-800 text-white shadow-md transform scale-[1.02]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
             >
               {layout.label}
             </button>

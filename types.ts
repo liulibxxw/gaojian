@@ -1,8 +1,10 @@
 
+
 export interface CoverState {
   title: string;
   subtitle: string;
   bodyText: string;
+  secondaryBodyText: string;
   category: string;
   author: string;
   backgroundColor: string;
@@ -10,7 +12,7 @@ export interface CoverState {
   textColor: string;
   titleFont: 'modern' | 'serif' | 'jianghu' | 'bold';
   bodyFont: 'modern' | 'serif' | 'jianghu' | 'bold';
-  layoutStyle: 'centered' | 'split' | 'minimal';
+  layoutStyle: 'centered' | 'split' | 'minimal' | 'duality';
   mode: 'cover' | 'long-text';
   bodyTextSize: string;
   bodyTextAlign: string;
@@ -24,6 +26,7 @@ export interface ContentPreset {
   title: string;
   subtitle: string;
   bodyText: string;
+  secondaryBodyText?: string;
   category: string;
   author: string;
 }

@@ -1,17 +1,20 @@
+
 import React, { useEffect, useState, forwardRef, useRef } from 'react';
 import { CoverState } from '../types';
 
 interface CoverPreviewProps {
   state: CoverState;
   onBodyTextChange: (text: string) => void;
+  onSecondaryBodyTextChange: (text: string) => void;
   isExporting?: boolean;
 }
 
-const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onBodyTextChange, isExporting = false }, ref) => {
+const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onBodyTextChange, onSecondaryBodyTextChange, isExporting = false }, ref) => {
   const { 
     title, 
     subtitle, 
     bodyText,
+    secondaryBodyText,
     category, 
     author,
     backgroundColor, 
@@ -25,19 +28,16 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     bodyTextAlign = 'text-justify', 
   } = state;
 
-  // 严格保留原有的逻辑判断
   const isJianghuTheme = title === '江湖就是要打打杀杀';
   const effectiveCategory = (isJianghuTheme && category === '文稿创作') ? '文稿、短打' : category;
   
   const categoryBarColor = accentColor;
   const contentBarColor = accentColor;
 
-  const [noiseDataUrl, setNoiseDataUrl] = useState<string>('');
   const editableRef = useRef<HTMLDivElement>(null);
+  const secondaryEditableRef = useRef<HTMLDivElement>(null);
   const isComposing = useRef(false);
 
-  // 【还原方案】渲染隔离样式：
-  // 恢复到标准的渲染隔离策略，移除针对特定浏览器的 unstable hacks
   const renderingIsolation: React.CSSProperties = {
     textRendering: 'geometricPrecision',
     WebkitFontSmoothing: 'antialiased',
@@ -55,45 +55,30 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   };
 
   useEffect(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 200;
-    canvas.height = 200;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const idata = ctx.createImageData(canvas.width, canvas.height);
-    const buffer32 = new Uint32Array(idata.data.buffer);
-    const len = buffer32.length;
-
-    for (let i = 0; i < len; i++) {
-        if (Math.random() < 0.5) {
-            buffer32[i] = 0x08000000; 
-        }
-    }
-    ctx.putImageData(idata, 0, 0);
-    setNoiseDataUrl(canvas.toDataURL());
-  }, []);
-
-  useEffect(() => {
     const el = editableRef.current;
     if (el && el.innerHTML !== bodyText && !isComposing.current) {
       el.innerHTML = bodyText;
     }
   }, [bodyText, layoutStyle, mode]);
 
-  const handleContainerClick = (e: React.MouseEvent) => {
+  useEffect(() => {
+    const el = secondaryEditableRef.current;
+    if (el && el.innerHTML !== secondaryBodyText && !isComposing.current) {
+      el.innerHTML = secondaryBodyText;
+    }
+  }, [secondaryBodyText, layoutStyle, mode]);
+
+  const handleContainerClick = (e: React.MouseEvent, targetRef?: React.RefObject<HTMLDivElement>) => {
     if (isExporting) return;
     
-    if (editableRef.current && editableRef.current.contains(e.target as Node)) {
-        return;
-    }
+    if (editableRef.current && editableRef.current.contains(e.target as Node)) return;
+    if (secondaryEditableRef.current && secondaryEditableRef.current.contains(e.target as Node)) return;
 
-    if (editableRef.current) {
-      editableRef.current.focus();
+    const refToFocus = targetRef || editableRef;
+    if (refToFocus.current) {
+      refToFocus.current.focus();
       const range = document.createRange();
-      range.selectNodeContents(editableRef.current);
+      range.selectNodeContents(refToFocus.current);
       range.collapse(false);
       const sel = window.getSelection();
       if (sel) {
@@ -103,10 +88,12 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     }
   };
 
-  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+  const handleInput = (e: React.FormEvent<HTMLDivElement>, isSecondary = false) => {
       const html = e.currentTarget.innerHTML;
-      if (html !== bodyText) {
-        onBodyTextChange(html);
+      if (isSecondary) {
+          if (html !== secondaryBodyText) onSecondaryBodyTextChange(html);
+      } else {
+          if (html !== bodyText) onBodyTextChange(html);
       }
   };
 
@@ -139,6 +126,9 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
         if (length > 14) sizeClass = 'text-2xl';
         else if (length > 10) sizeClass = 'text-3xl';
         else sizeClass = 'text-4xl';
+    } else if (layoutStyle === 'duality') {
+        if (length > 8) sizeClass = 'text-3xl';
+        else sizeClass = 'text-4xl';
     } else {
         if (length > 10) sizeClass = 'text-2xl';
         else if (length > 7) sizeClass = 'text-3xl';
@@ -146,6 +136,13 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     }
 
     return `${baseFont} ${sizeClass}`;
+  };
+
+  const getSubtitleSizeClass = (baseClass: string, length: number) => {
+      if (length > 25) return 'text-[12px]';
+      if (length > 18) return 'text-[13px]';
+      if (length > 12) return 'text-sm';
+      return baseClass;
   };
 
   const getBodyFontClass = () => {
@@ -165,18 +162,6 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       
       <div className="absolute top-[110px] right-0 w-8 h-[1px] bg-current opacity-30 pointer-events-none" style={{ color: textColor }}></div>
       <div className="absolute top-[116px] right-0 w-4 h-[1px] bg-current opacity-30 pointer-events-none" style={{ color: textColor }}></div>
-      
-      <div className="absolute bottom-20 left-2.5 flex flex-col items-center gap-1 opacity-50 pointer-events-none" style={{ color: textColor }}>
-         <div className="w-px h-8 bg-current opacity-50"></div>
-         <div className="text-[8px] tracking-widest font-mono uppercase flex flex-col items-center">
-           {'Non-Linear Narrative'.split('').map((char, index) => (
-             <span key={index} className="block leading-tight scale-x-90 -mb-px">
-               {char === ' ' ? '\u00A0' : char}
-             </span>
-           ))}
-         </div>
-         <div className="w-px h-2 bg-current opacity-50"></div>
-      </div>
     </>
   );
 
@@ -193,6 +178,153 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   );
 
   const renderContent = () => {
+    if (layoutStyle === 'duality') {
+      return (
+        <div className={`relative z-10 w-full flex flex-col ${flexGrowClass} ${minHeightClass}`}>
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+                <div 
+                  className="absolute top-[10%] left-[-15%] w-[320px] h-[320px] rounded-[40px] border-[16px] border-current opacity-[0.08] -rotate-[15deg] transform origin-center" 
+                  style={{ color: textColor }}
+                ></div>
+                <div 
+                  className="absolute top-[15%] left-[-5%] w-[280px] h-[280px] rounded-full border-[2px] border-current opacity-[0.15] rotate-[30deg] transform origin-center border-dashed" 
+                  style={{ color: textColor }}
+                ></div>
+                <div 
+                  className="absolute top-[28%] left-[10%] w-[100px] h-[100px] rounded-full border-r-4 border-t-4 border-current opacity-[0.1] -rotate-[45deg]" 
+                  style={{ color: textColor }}
+                ></div>
+                <div className="absolute top-[5%] right-[-10%] w-[120%] h-px bg-current opacity-[0.1] -rotate-[25deg]" style={{ color: textColor }}></div>
+                <div className="absolute top-[8%] right-[-10%] w-[120%] h-[20px] bg-current opacity-[0.03] -rotate-[25deg]" style={{ color: textColor }}></div>
+                <div className="absolute bottom-[5%] right-[-5%] w-[150px] h-[150px] border-t border-l border-current opacity-[0.1]" style={{ color: textColor }}></div>
+            </div>
+
+            <div className={`flex flex-col relative px-6 py-4 ${isLongText ? 'min-h-[300px]' : 'flex-1 h-1/2'} overflow-hidden ${minHeightClass}`}>
+                <div className="absolute -left-6 bottom-0 text-[9rem] font-bold opacity-[0.06] pointer-events-none leading-none z-0 font-bold-sc select-none" style={{ color: textColor }}>01</div>
+
+                <div className="shrink-0 flex justify-between items-start z-10 mb-2 min-h-[50px]">
+                     <div className="flex flex-col items-start gap-1 mt-1 z-10">
+                        {displayCategories.map((cat, i) => (
+                             <div key={i} className="relative group">
+                                <div className="absolute inset-0 skew-x-[12deg] opacity-10" style={{ backgroundColor: textColor }}></div>
+                                <div className="relative px-2 py-[2px] border-l-2 border-r-2 text-[9px] font-bold tracking-widest uppercase flex items-center gap-1" style={{ color: textColor, borderColor: textColor }}>
+                                    <div className="w-1 h-1 bg-current rounded-full"></div>
+                                    {cat}
+                                </div>
+                             </div>
+                        ))}
+                     </div>
+
+                     <div className="flex flex-col items-end relative text-right">
+                        <h1 className={`font-bold font-bold-sc leading-none mb-1.5 z-10 ${getTitleFontClass()}`} style={{ color: textColor }}>
+                           {title}
+                        </h1>
+                        <div className={`flex items-center gap-1.5 opacity-80 font-bold font-serif-sc z-10 whitespace-nowrap overflow-hidden ${getSubtitleSizeClass('text-[12px]', subtitle.length)}`} style={{ color: textColor }}>
+                           <span className="scale-75 shrink-0">○</span>
+                           <span className="border-b border-current pb-0.5 opacity-90 truncate">{subtitle}</span>
+                           <span className="scale-75 shrink-0">●</span>
+                        </div>
+                     </div>
+                </div>
+
+                <div 
+                   className={`relative ${flexGrowClass} cursor-text overflow-hidden pl-1 z-10 ${minHeightClass} mb-2`}
+                   onClick={(e) => handleContainerClick(e, editableRef)}
+                >
+                   <div
+                      ref={editableRef}
+                      contentEditable={!isExporting}
+                      onInput={(e) => handleInput(e, false)}
+                      onCompositionStart={() => isComposing.current = true}
+                      onCompositionEnd={() => isComposing.current = false}
+                      suppressContentEditableWarning={true}
+                      className={`${getBodyClasses()} w-full pl-3 pr-1 py-1 block outline-none ${isLongText ? 'h-auto' : 'h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]'}`}
+                      style={{ color: textColor }}
+                    />
+                </div>
+            </div>
+
+            <div className="relative shrink-0 h-0 z-20">
+                 <div className="absolute top-0 left-0 w-full h-[40px] -translate-y-1/2" style={{ 
+                     background: `linear-gradient(to bottom right, transparent 49%, ${textColor} 49%, ${textColor} 51%, transparent 51%)` 
+                 }}></div>
+                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full p-2 border border-current shadow-sm" style={{ color: textColor }}>
+                    <div className="w-2 h-2 rounded-full bg-current" style={{ color: accentColor }}></div>
+                 </div>
+            </div>
+
+            <div 
+                className={`flex flex-col relative px-6 py-4 ${isLongText ? 'min-h-[300px]' : 'flex-1 h-1/2'} ${minHeightClass}`} 
+            >
+                <div className="absolute -right-6 -top-4 text-[9rem] font-bold opacity-[0.06] pointer-events-none leading-none z-0 font-bold-sc select-none" style={{ color: textColor }}>02</div>
+
+                <div 
+                    className="absolute left-0 right-0 bottom-0 -z-10"
+                    style={{
+                        top: '-20px',
+                        background: `
+                            linear-gradient(to bottom right, transparent 49.5%, ${accentColor} 49.5%) top center / 100% 40px no-repeat,
+                            linear-gradient(${accentColor}, ${accentColor}) top 40px center / 100% calc(100% - 40px) no-repeat
+                        `
+                    }}
+                />
+
+                <div 
+                   className={`relative ${flexGrowClass} cursor-text overflow-hidden pl-1 z-10 ${minHeightClass} mt-2`}
+                   onClick={(e) => handleContainerClick(e, secondaryEditableRef)}
+                >
+                   <div
+                      ref={secondaryEditableRef}
+                      contentEditable={!isExporting}
+                      onInput={(e) => handleInput(e, true)}
+                      onCompositionStart={() => isComposing.current = true}
+                      onCompositionEnd={() => isComposing.current = false}
+                      suppressContentEditableWarning={true}
+                      className={`${getBodyClasses()} w-full pl-3 pr-1 py-1 block outline-none ${isLongText ? 'h-auto' : 'h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]'}`}
+                      style={{ color: textColor }} 
+                    />
+                </div>
+
+                <div className="shrink-0 pt-6 flex justify-between items-end z-10 relative mt-auto">
+                    <div className="relative pr-10 flex flex-col items-start">
+                        <div className="relative z-10 flex items-center gap-3">
+                            <div className="flex flex-col items-end justify-center relative pr-3 border-r-2 border-current" style={{ color: textColor }}>
+                                <span className="text-[5px] uppercase tracking-[0.25em] font-mono opacity-50 mb-0.5 block leading-none">Identity</span>
+                                <div className="relative">
+                                    <span className={`text-xl font-black italic tracking-wide block leading-none ${getBodyFontClass()}`} style={{ color: textColor }}>
+                                         {author}
+                                     </span>
+                                     <div className="absolute -top-1 -left-2 w-1.5 h-1.5 border-t border-l border-current opacity-60"></div>
+                                </div>
+                            </div>
+                            <div className="flex items-end gap-[1.5px] h-6 select-none opacity-80" style={{ color: textColor }}>
+                                {[2, 1, 3, 1, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 3].map((w, i) => (
+                                    <div 
+                                      key={i} 
+                                      className={`bg-current ${i % 3 === 0 ? 'h-full' : 'h-[70%]'}`} 
+                                      style={{ width: `${w}px` }}
+                                    ></div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 opacity-60 select-none font-mono items-end text-right" style={{ color: textColor }}>
+                         <div className="flex items-center gap-1">
+                            <span className="text-[7px] tracking-widest">SYS.READY</span>
+                            <div className="w-1.5 h-1.5 bg-current animate-pulse"></div>
+                         </div>
+                         <div className="flex flex-col text-[6px] leading-tight opacity-70">
+                            <span>/// {new Date().getFullYear()}.{new Date().getMonth() + 1}</span>
+                            <span>LOC: 32.45.11 N</span>
+                         </div>
+                    </div>
+                </div>
+            </div>
+      </div>
+      );
+    }
+
     if (layoutStyle === 'minimal') {
       return (
         <div 
@@ -201,7 +333,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
           {renderTechDecorations()}
 
           <div className={`${flexGrowClass} flex flex-col ${minHeightClass}`}>
-              <div className="flex justify-between items-center border-b pb-2 mb-4 opacity-80 shrink-0" style={{ borderColor: `${textColor}40` }}>
+              <div className="flex justify-between items-center border-b pb-2 mb-3 opacity-80 shrink-0" style={{ borderColor: `${textColor}40` }}>
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: accentColor }}></div>
                     <span className="text-[9px] font-mono tracking-widest font-bold" style={{ color: textColor }}>SYSTEM_NORMAL</span>
@@ -216,7 +348,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                 </div>
               </div>
 
-              <div className="mb-3 relative shrink-0">
+              <div className="mb-2 relative shrink-0">
                 <div className="flex flex-wrap gap-2 mb-2">
                     {displayCategories.map((cat, idx) => (
                       <div key={idx} className="flex items-stretch select-none shadow-sm">
@@ -235,13 +367,13 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                   {title}
                 </h1>
                 <div className="w-full h-px opacity-20 my-2" style={{ backgroundColor: textColor }}></div>
-                <p className={`text-sm font-bold opacity-80 ${getBodyFontClass()}`} style={{ color: textColor }}>
+                <p className={`font-bold opacity-80 ${getBodyFontClass()} whitespace-nowrap overflow-hidden truncate ${getSubtitleSizeClass('text-sm md:text-base', subtitle.length)}`} style={{ color: textColor }}>
                   / {subtitle}
                 </p>
               </div>
 
-              <div className={`relative mt-1 ${flexGrowClass} flex flex-col ${minHeightClass}`}>
-                <div className="flex items-center mb-2 shrink-0">
+              <div className={`relative mt-0 ${flexGrowClass} flex flex-col ${minHeightClass}`}>
+                <div className="flex items-center mb-1 shrink-0">
                     <div className="px-2 py-0.5 text-[9px] font-bold tracking-widest text-white flex items-center justify-center" style={{ backgroundColor: textColor }}>
                       ARCHIVE
                     </div>
@@ -250,16 +382,16 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                 </div>
 
                 <div 
-                   className={`relative pl-6 pt-1 pb-2 ${flexGrowClass} cursor-text ${minHeightClass}`}
+                   className={`relative pl-6 pt-1 pb-1 ${flexGrowClass} cursor-text ${minHeightClass}`}
                    onClick={handleContainerClick}
                 >
-                    <div className="absolute left-0 top-0 bottom-4 w-px bg-current opacity-20" style={{ color: textColor }}></div>
+                    <div className="absolute left-0 top-0 bottom-2 w-px bg-current opacity-20" style={{ color: textColor }}></div>
                     <div className="absolute left-0 top-0 w-1 h-8" style={{ backgroundColor: contentBarColor }}></div>
 
                     <div
                       ref={editableRef}
                       contentEditable={!isExporting}
-                      onInput={handleInput}
+                      onInput={(e) => handleInput(e)}
                       onCompositionStart={() => isComposing.current = true}
                       onCompositionEnd={() => isComposing.current = false}
                       suppressContentEditableWarning={true}
@@ -270,8 +402,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
               </div>
           </div>
           
-          <div className="shrink-0 flex flex-col mt-2">
-              <div className="ml-6 flex gap-0.5 opacity-20 mb-2 shrink-0">
+          <div className="shrink-0 flex flex-col mt-1">
+              <div className="ml-6 flex gap-0.5 opacity-20 mb-1.5 shrink-0">
                   <div className="h-1 w-4 bg-current" style={{ color: textColor }}></div>
                   <div className="h-1 w-2 bg-current" style={{ color: textColor }}></div>
                   <div className="h-1 w-8 bg-current" style={{ color: textColor }}></div>
@@ -279,7 +411,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
               </div>
               
               <div 
-                className="flex justify-between items-center opacity-80 border-t pt-2 border-dashed shrink-0" 
+                className="flex justify-between items-center opacity-80 border-t pt-1.5 border-dashed shrink-0" 
                 style={{ 
                   borderColor: `${textColor}40`, 
                 }}
@@ -313,13 +445,13 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
              <h1 className={`mb-2 leading-tight whitespace-nowrap ${getTitleFontClass()}`} style={{ color: textColor }}>
               {title}
             </h1>
-             <span className={`px-4 py-1 border-y border-current text-xs tracking-widest uppercase opacity-80 ${getBodyFontClass()}`} style={{ color: textColor, borderColor: `${textColor}40` }}>
+             <span className={`px-4 py-1 border-y border-current tracking-widest uppercase opacity-80 ${getBodyFontClass()} whitespace-nowrap overflow-hidden truncate max-w-full ${getSubtitleSizeClass('text-sm', subtitle.length)}`} style={{ color: textColor, borderColor: `${textColor}40` }}>
                {subtitle}
              </span>
           </div>
 
           <div 
-            className={`relative flex flex-col justify-start pt-6 ${flexGrowClass} cursor-text`}
+            className={`relative flex flex-col justify-start pt-6 ${flexGrowClass} cursor-text ${minHeightClass}`}
             style={{ 
                marginBottom: isLongText ? '0.25rem' : '0',
                overflow: isLongText ? 'visible' : 'hidden'
@@ -331,7 +463,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
              <div
                 ref={editableRef}
                 contentEditable={!isExporting}
-                onInput={handleInput}
+                onInput={(e) => handleInput(e)}
                 onCompositionStart={() => isComposing.current = true}
                 onCompositionEnd={() => isComposing.current = false}
                 suppressContentEditableWarning={true}
@@ -397,7 +529,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
               <div className="w-full flex justify-between items-end mt-4 min-h-[40px] gap-4 relative z-10">
                  <div className="flex-1 pb-1 min-w-0">
                     <div className="inline-block px-3 py-1 text-white shadow-md transform -rotate-1 origin-bottom-left whitespace-nowrap max-w-full overflow-hidden text-ellipsis" style={{ backgroundColor: textColor }}>
-                       <p className={`text-xl md:text-2xl font-bold ${getBodyFontClass()} whitespace-nowrap overflow-hidden text-ellipsis`}>
+                       <p className={`font-bold ${getBodyFontClass()} whitespace-nowrap overflow-hidden text-ellipsis ${getSubtitleSizeClass('text-2xl md:text-3xl', subtitle.length)}`}>
                          {subtitle}
                        </p>
                     </div>
@@ -423,7 +555,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
             </div>
 
             <div 
-               className={`relative ${flexGrowClass} cursor-text`}
+               className={`relative ${flexGrowClass} cursor-text ${minHeightClass}`}
                style={{
                  marginBottom: isLongText ? '0' : '0',
                  overflow: isLongText ? 'visible' : 'hidden'
@@ -433,7 +565,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
                <div
                   ref={editableRef}
                   contentEditable={!isExporting}
-                  onInput={handleInput}
+                  onInput={(e) => handleInput(e)}
                   onCompositionStart={() => isComposing.current = true}
                   onCompositionEnd={() => isComposing.current = false}
                   suppressContentEditableWarning={true}
@@ -460,7 +592,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       className={`relative shadow-2xl antialiased overflow-hidden w-[400px] shrink-0 ${
         isLongText 
           ? 'h-auto min-h-[600px] md:min-h-[712px]' 
-          : 'h-[500px]'
+          : 'h-[440px]'
       }`}
       style={renderingIsolation}
     >
@@ -472,26 +604,17 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
         }}
       />
       
-      {noiseDataUrl && (
-        <div 
-          className="absolute inset-0 pointer-events-none z-0 opacity-100 w-full h-full"
-          style={{ 
-            backgroundImage: `url(${noiseDataUrl})`,
-            backgroundRepeat: 'repeat',
-            mixBlendMode: 'normal' 
-          }}
-        />
+      {layoutStyle !== 'duality' && (
+         <div 
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+                backgroundImage: `linear-gradient(${textColor} 1px, transparent 1px), linear-gradient(90deg, ${textColor} 1px, transparent 1px)`,
+                backgroundSize: '40px 40px',
+                opacity: 0.05
+            }}
+         />
       )}
-
-      <div 
-         className="absolute inset-0 pointer-events-none z-0"
-         style={{
-            backgroundImage: `linear-gradient(${textColor} 1px, transparent 1px), linear-gradient(90deg, ${textColor} 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-            opacity: 0.05
-         }}
-      />
-
+      
       {renderContent()}
     </div>
   );

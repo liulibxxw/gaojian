@@ -29,6 +29,7 @@ async function getEmbedFontCSS() {
         const css = await res.text();
         
         const urls: string[] = [];
+        // Extract URLs
         css.replace(/url\(([^)]+)\)/g, (match, url) => {
             urls.push(url.replace(/['"]/g, '').trim());
             return match;
@@ -79,7 +80,7 @@ const App: React.FC = () => {
            textColor: parsed.textColor || INITIAL_TEXT_COLOR,
            titleFont: parsed.titleFont || 'serif',
            secondaryBodyText: parsed.secondaryBodyText || '',
-           layoutStyle: parsed.layoutStyle || 'minimal'
+           layoutStyle: parsed.layoutStyle || 'duality'
         };
       }
     } catch (e) {
@@ -97,7 +98,7 @@ const App: React.FC = () => {
       textColor: INITIAL_TEXT_COLOR,
       titleFont: 'serif',
       bodyFont: 'serif',
-      layoutStyle: 'minimal',
+      layoutStyle: 'duality',
       mode: 'cover',
       bodyTextSize: 'text-[13px]',
       bodyTextAlign: 'text-justify',
@@ -119,7 +120,7 @@ const App: React.FC = () => {
     }
   });
   const [showContentModal, setShowContentModal] = useState(false);
-  const [activePresetId, setActivePresetId] = useState<string | null>('preset_3');
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
@@ -162,6 +163,7 @@ const App: React.FC = () => {
     const handleResize = () => {
         if (previewContainerRef.current) {
             const width = previewContainerRef.current.clientWidth;
+            // 400px is the card width. 32px safety margin.
             if (width < 432) {
                 setPreviewScale((width - 32) / 400);
             } else {
@@ -172,6 +174,7 @@ const App: React.FC = () => {
 
     window.addEventListener('resize', handleResize);
     handleResize();
+    // Double check after layout settlement
     setTimeout(handleResize, 100);
 
     return () => window.removeEventListener('resize', handleResize);
@@ -206,9 +209,8 @@ const App: React.FC = () => {
       ...prev,
       title: preset.title,
       subtitle: preset.subtitle,
-      // 保留已有的正文内容，不从预设中覆盖
-      // bodyText: preset.bodyText,
-      // secondaryBodyText: preset.secondaryBodyText || '',
+      bodyText: preset.bodyText,
+      secondaryBodyText: preset.secondaryBodyText || '',
       category: preset.category,
       author: preset.author
     }));
@@ -249,10 +251,13 @@ const App: React.FC = () => {
 
     try {
       await document.fonts.ready;
+      // Slight delay to ensure any layout shifts from isExporting state are done
       await new Promise(resolve => setTimeout(resolve, 200)); 
 
+      // Manually fetch and embed fonts to avoid html-to-image scanning all global stylesheets
       const fontCss = await getEmbedFontCSS();
 
+      // Configure export options
       const exportOptions: any = {
         cacheBust: true,
         pixelRatio: 4, 
@@ -262,10 +267,10 @@ const App: React.FC = () => {
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
-        exportOptions.height = 440; // 440 * 4 = 1760
+        exportOptions.height = 500;
         exportOptions.style = {
            width: '400px',
-           height: '440px',
+           height: '500px',
            maxWidth: 'none',
            maxHeight: 'none',
            transform: 'none',
