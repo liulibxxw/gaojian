@@ -326,6 +326,10 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
     }
 
     if (layoutStyle === 'minimal') {
+      const plainText = bodyText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+      const charCount = plainText.trim().length;
+      const readTime = Math.ceil(charCount / 400) || 1;
+
       return (
         <div 
           className={`relative z-10 p-6 w-full flex flex-col justify-between ${isLongText ? 'flex-auto' : 'h-full overflow-hidden'}`}
@@ -334,9 +338,16 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
 
           <div className={`${flexGrowClass} flex flex-col ${minHeightClass}`}>
               <div className="flex justify-between items-center border-b pb-2 mb-3 opacity-80 shrink-0" style={{ borderColor: `${textColor}40` }}>
-                <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: accentColor }}></div>
-                    <span className="text-[9px] font-mono tracking-widest font-bold" style={{ color: textColor }}>SYSTEM_NORMAL</span>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-sm animate-pulse" style={{ backgroundColor: accentColor }}></div>
+                        <span className="text-[9px] font-mono tracking-widest font-bold" style={{ color: textColor }}>SYSTEM_NORMAL</span>
+                    </div>
+                    {charCount > 0 && (
+                        <div className="text-[8px] mt-0.5 opacity-50 font-sans-sc font-bold" style={{ color: textColor }}>
+                           全文约 {charCount} 字 预计阅读用时 {readTime} 分
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="h-1 w-12 bg-current opacity-20" style={{ color: textColor }}>
