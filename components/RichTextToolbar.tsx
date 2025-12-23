@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   BoldIcon, 
   ItalicIcon, 
@@ -8,9 +8,10 @@ import {
   AdjustmentsHorizontalIcon,
   MinusIcon,
   PlusIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  CheckIcon
 } from '@heroicons/react/24/solid';
-import { TEXT_PALETTE, PALETTE } from '../constants';
+import { TEXT_PALETTE } from '../constants';
 import { CoverState } from '../types';
 
 interface RichTextToolbarProps {
@@ -24,15 +25,50 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   const [showSizePalette, setShowSizePalette] = useState(false);
   const [showSearchAlign, setShowSearchAlign] = useState(false);
   const [searchChar, setSearchChar] = useState('');
+  const [isRegexMode, setIsRegexMode] = useState(false);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [palettePosition, setPalettePosition] = useState<{left: number, bottom: number} | null>(null);
+  const [batchFontSize, setBatchFontSize] = useState(13);
   
   const toolbarRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
 
-  const currentSizeVal = React.useMemo(() => {
+  const currentSizeVal = useMemo(() => {
       const match = state.bodyTextSize?.match(/text-\[(\d+)px\]/);
       return match ? parseInt(match[1], 10) : 13;
   }, [state.bodyTextSize]);
+
+  const allParagraphs = useMemo(() => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = state.bodyText || "";
+    let ps = Array.from(tempDiv.children) as HTMLElement[];
+    if (ps.length === 0 && tempDiv.innerText.trim()) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = tempDiv.innerHTML;
+        ps = [wrapper];
+    }
+    return ps.map((p, i) => ({ index: i, text: p.innerText, html: p.outerHTML }));
+  }, [state.bodyText]);
+
+  const matches = useMemo(() => {
+    if (!searchChar) return [];
+    
+    let regex: RegExp | null = null;
+    try {
+        regex = isRegexMode ? new RegExp(searchChar, 'i') : null;
+    } catch (e) {
+        regex = null;
+    }
+
+    return allParagraphs.filter(p => {
+        if (regex) return regex.test(p.text);
+        return p.text.includes(searchChar);
+    });
+  }, [allParagraphs, searchChar, isRegexMode]);
+
+  useEffect(() => {
+    setSelectedIndices(new Set(matches.map(m => m.index)));
+  }, [matches]);
 
   useEffect(() => {
     if (!visible) {
@@ -44,15 +80,10 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (toolbarRef.current && toolbarRef.current.contains(event.target as Node)) {
-          return;
-      }
-      if (paletteRef.current && paletteRef.current.contains(event.target as Node)) {
-          return;
-      }
+      if (toolbarRef.current && toolbarRef.current.contains(event.target as Node)) return;
+      if (paletteRef.current && paletteRef.current.contains(event.target as Node)) return;
       setShowTextColorPalette(false);
       setShowSizePalette(false);
-      // 注意：这里不自动关闭搜索框，以便用户输入
     };
 
     if (showTextColorPalette || showSizePalette) {
@@ -72,16 +103,12 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   };
 
   const applyBatchAlign = (alignment: string) => {
-    if (!searchChar) return;
+    if (selectedIndices.size === 0) return;
 
-    // 创建临时容器解析HTML
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = state.bodyText || "";
-    
-    // 获取所有顶级段落元素（contentEditable通常使用div或p包装段落）
     let paragraphs = Array.from(tempDiv.children) as HTMLElement[];
     
-    // 如果没有子元素，说明是纯文本或单个段落
     if (paragraphs.length === 0 && tempDiv.innerText.trim()) {
         const wrapper = document.createElement('div');
         wrapper.innerHTML = tempDiv.innerHTML;
@@ -91,8 +118,8 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
     }
 
     let modified = false;
-    paragraphs.forEach(p => {
-        if (p.innerText.includes(searchChar)) {
+    paragraphs.forEach((p, i) => {
+        if (selectedIndices.has(i)) {
             p.style.textAlign = alignment;
             modified = true;
         }
@@ -103,9 +130,71 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
     }
   };
 
+  const applyStyleToMatches = (styles: { color?: string, fontSize?: string }) => {
+    if (!searchChar || selectedIndices.size === 0) return;
+    
+    let regex: RegExp;
+    try {
+        const pattern = isRegexMode ? searchChar : searchChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        regex = new RegExp(`(${pattern})(?![^<]*>)`, 'gi');
+    } catch (e) { return; }
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = state.bodyText || "";
+    let paragraphs = Array.from(tempDiv.children) as HTMLElement[];
+
+    if (paragraphs.length === 0 && tempDiv.innerText.trim()) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = tempDiv.innerHTML;
+        tempDiv.innerHTML = '';
+        tempDiv.appendChild(wrapper);
+        paragraphs = [wrapper];
+    }
+
+    let modified = false;
+    paragraphs.forEach((p, i) => {
+        if (selectedIndices.has(i)) {
+            p.innerHTML = p.innerHTML.replace(regex, (match) => {
+                const styleStr = [
+                    styles.color ? `color: ${styles.color}` : '',
+                    styles.fontSize ? `font-size: ${styles.fontSize}` : ''
+                ].filter(Boolean).join(';');
+                modified = true;
+                return `<span style="${styleStr}">${match}</span>`;
+            });
+        }
+    });
+
+    if (modified) {
+        onChange({ bodyText: tempDiv.innerHTML });
+    }
+  };
+
+  const toggleSelection = (index: number) => {
+    const next = new Set(selectedIndices);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    setSelectedIndices(next);
+  };
+
+  const toggleAll = () => {
+    if (selectedIndices.size === matches.length) {
+        setSelectedIndices(new Set());
+    } else {
+        setSelectedIndices(new Set(matches.map(m => m.index)));
+    }
+  };
+
+  const handleBetweenPreset = () => {
+      setIsRegexMode(true);
+      if (searchChar.length === 2) {
+          setSearchChar(`${searchChar[0]}.*${searchChar[1]}`);
+      }
+  };
+
   const preventFocusLoss = (e: React.MouseEvent | React.TouchEvent) => {
     const target = e.target as HTMLElement;
-    if (target.tagName !== 'INPUT' && !target.closest('.search-input-container')) {
+    if (target.tagName !== 'INPUT' && !target.closest('.interactive-area')) {
        e.preventDefault();
     }
   };
@@ -167,6 +256,11 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
       onChange({ bodyTextSize: `text-[${newSize}px]` });
   };
 
+  const handleBatchFontSizeChange = (newSize: number) => {
+      setBatchFontSize(newSize);
+      applyStyleToMatches({ fontSize: `${newSize}px` });
+  };
+
   const containerClass = "flex items-center gap-0.5 bg-white rounded-xl p-0.5 border border-gray-200 shadow-sm shrink-0";
   const buttonClass = "p-1.5 hover:bg-gray-50 rounded-lg text-gray-600 transition-all active:scale-95";
 
@@ -179,28 +273,112 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
             onTouchStart={preventFocusLoss}
         >
             {showSearchAlign && (
-                <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 search-input-container animate-in fade-in zoom-in-95">
-                    <div className="relative flex-1">
-                        <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input 
-                            type="text"
-                            placeholder="搜索字符批量对齐..."
-                            value={searchChar}
-                            onChange={(e) => setSearchChar(e.target.value)}
-                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-300"
-                        />
+                <div className="flex flex-col gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100 interactive-area animate-in fade-in zoom-in-95">
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input 
+                                type="text"
+                                placeholder={isRegexMode ? "正则表达式匹配..." : "搜索内容进行批量操作..."}
+                                value={searchChar}
+                                onChange={(e) => setSearchChar(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-300"
+                            />
+                        </div>
+                        <button 
+                            onClick={() => setIsRegexMode(!isRegexMode)}
+                            className={`px-2 py-1.5 rounded-lg text-[10px] font-black border transition-all ${isRegexMode ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-400 border-gray-200'}`}
+                        >
+                            REG
+                        </button>
+                        <button 
+                            onClick={handleBetweenPreset}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all bg-white border-gray-200 text-gray-600 active:bg-gray-100 shadow-sm`}
+                        >
+                            之间
+                        </button>
                     </div>
-                    <div className="flex gap-1 border-l pl-2 border-gray-200">
-                        <button onClick={() => applyBatchAlign('left')} className="p-1.5 hover:bg-white rounded-md text-gray-500 shadow-sm border border-transparent active:border-purple-200">
-                            <Bars3BottomLeftIcon className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => applyBatchAlign('center')} className="p-1.5 hover:bg-white rounded-md text-gray-500 shadow-sm border border-transparent active:border-purple-200">
-                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M3 4h18v2H3V4zm4 5h10v2H7V9zm-4 5h18v2H3v-2zm4 5h10v2H7v-2z" /></svg>
-                        </button>
-                        <button onClick={() => applyBatchAlign('right')} className="p-1.5 hover:bg-white rounded-md text-gray-500 shadow-sm border border-transparent active:border-purple-200">
-                            <Bars3BottomRightIcon className="w-4 h-4" />
-                        </button>
-                    </div>
+
+                    {matches.length > 0 && (
+                        <div className="flex flex-col gap-1 border-t pt-2 border-gray-200">
+                            <div className="flex justify-between items-center px-1 mb-1">
+                                <span className="text-[10px] font-bold text-gray-400">选择范围 ({selectedIndices.size}/{matches.length})</span>
+                                <button onClick={toggleAll} className="text-[10px] text-purple-600 font-bold hover:underline">
+                                    {selectedIndices.size === matches.length ? '取消全选' : '全选'}
+                                </button>
+                            </div>
+                            <div className="max-h-24 overflow-y-auto flex flex-col gap-1 custom-scrollbar">
+                                {matches.map((m) => (
+                                    <div 
+                                        key={m.index} 
+                                        onClick={() => toggleSelection(m.index)}
+                                        className={`flex items-center gap-2 p-2 rounded-lg border text-[10px] transition-all cursor-pointer ${selectedIndices.has(m.index) ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-white border-gray-100 text-gray-500'}`}
+                                    >
+                                        <div className={`w-3 h-3 rounded flex items-center justify-center border transition-all ${selectedIndices.has(m.index) ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300'}`}>
+                                            {selectedIndices.has(m.index) && <CheckIcon className="w-2 h-2" />}
+                                        </div>
+                                        <span className="truncate flex-1">{m.text || "(空行)"}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="flex flex-col gap-2 mt-2">
+                                <div className="flex gap-1">
+                                    <button onClick={() => applyBatchAlign('left')} className="flex-1 flex justify-center py-2 bg-white rounded-lg text-gray-500 border border-gray-200 shadow-sm active:scale-95"><Bars3BottomLeftIcon className="w-4 h-4" /></button>
+                                    <button onClick={() => applyBatchAlign('center')} className="flex-1 flex justify-center py-2 bg-white rounded-lg text-gray-500 border border-gray-200 shadow-sm active:scale-95">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M3 4h18v2H3V4zm4 5h10v2H7V9zm-4 5h18v2H3v-2zm4 5h10v2H7v-2z" /></svg>
+                                    </button>
+                                    <button onClick={() => applyBatchAlign('right')} className="flex-1 flex justify-center py-2 bg-white rounded-lg text-gray-500 border border-gray-200 shadow-sm active:scale-95"><Bars3BottomRightIcon className="w-4 h-4" /></button>
+                                </div>
+                                
+                                <div className="flex flex-col gap-3 p-3 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-gray-400 shrink-0">批量颜色:</span>
+                                        <div className="flex gap-1.5 overflow-x-auto custom-scrollbar flex-1 py-1">
+                                            {TEXT_PALETTE.map(c => (
+                                                <button 
+                                                    key={c.value} 
+                                                    onClick={() => applyStyleToMatches({ color: c.value })}
+                                                    className="w-5 h-5 rounded-full border border-gray-200 shrink-0 active:scale-90 transition-transform"
+                                                    style={{ backgroundColor: c.value }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2 border-t pt-3 border-gray-50">
+                                        <span className="text-[10px] font-bold text-gray-400 shrink-0">批量字号:</span>
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => handleBatchFontSizeChange(Math.max(10, batchFontSize - 1))}
+                                                className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors active:scale-90"
+                                            >
+                                                <MinusIcon className="w-4 h-4" />
+                                            </button>
+                                            
+                                            <input 
+                                                type="range" 
+                                                min="10" 
+                                                max="40" 
+                                                step="1" 
+                                                value={batchFontSize} 
+                                                onChange={(e) => handleBatchFontSizeChange(parseInt(e.target.value))}
+                                                className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                            />
+
+                                            <button 
+                                                onClick={() => handleBatchFontSizeChange(Math.min(40, batchFontSize + 1))}
+                                                className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors active:scale-90"
+                                            >
+                                                <PlusIcon className="w-4 h-4" />
+                                            </button>
+                                            
+                                            <span className="text-[10px] font-mono font-bold text-gray-600 w-8 text-center">{batchFontSize}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -222,7 +400,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                     <button
                         onClick={toggleSearchAlign}
                         className={`p-2 rounded-xl border shadow-sm transition-all active:scale-95 ${showSearchAlign ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'}`}
-                        title="搜索对齐"
+                        title="批量搜索修饰"
                     >
                         <MagnifyingGlassIcon className="w-5 h-5" />
                     </button>
