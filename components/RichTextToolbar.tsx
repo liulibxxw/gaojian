@@ -4,6 +4,7 @@ import {
   ItalicIcon, 
   Bars3BottomLeftIcon, 
   Bars3BottomRightIcon,
+  Bars3Icon,
   PencilIcon,
   AdjustmentsHorizontalIcon,
   MinusIcon,
@@ -329,6 +330,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M3 4h18v2H3V4zm4 5h10v2H7V9zm-4 5h18v2H3v-2zm4 5h10v2H7v-2z" /></svg>
                                     </button>
                                     <button onClick={() => applyBatchAlign('right')} className="flex-1 flex justify-center py-2 bg-white rounded-lg text-gray-500 border border-gray-200 shadow-sm active:scale-95"><Bars3BottomRightIcon className="w-4 h-4" /></button>
+                                    <button onClick={() => applyBatchAlign('justify')} className="flex-1 flex justify-center py-2 bg-white rounded-lg text-gray-500 border border-gray-200 shadow-sm active:scale-95"><Bars3Icon className="w-4 h-4" /></button>
                                 </div>
                                 
                                 <div className="flex flex-col gap-3 p-3 bg-white border border-gray-200 rounded-2xl shadow-sm">
@@ -394,6 +396,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M3 4h18v2H3V4zm4 5h10v2H7V9zm-4 5h18v2H3v-2zm4 5h10v2H7v-2z" /></svg>
                     </button>
                     <button onClick={() => handleFormat('justifyRight')} className={buttonClass} title="右对齐"><Bars3BottomRightIcon className="w-5 h-5" /></button>
+                    <button onClick={() => handleFormat('justifyFull')} className={buttonClass} title="两端对齐"><Bars3Icon className="w-5 h-5" /></button>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
