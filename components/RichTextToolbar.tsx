@@ -30,6 +30,16 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [palettePosition, setPalettePosition] = useState<{left: number, bottom: number} | null>(null);
   const [batchFontSize, setBatchFontSize] = useState(13);
+
+  // 状态检测：加粗、斜体及对齐方式
+  const [formatStates, setFormatStates] = useState({
+    bold: false,
+    italic: false,
+    alignLeft: false,
+    alignCenter: false,
+    alignRight: false,
+    alignJustify: false
+  });
   
   const toolbarRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
@@ -67,6 +77,24 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
     });
   }, [allParagraphs, searchChar, isRegexMode]);
 
+  // 监听选区变化以更新工具栏状态
+  useEffect(() => {
+    const updateFormatStates = () => {
+      if (!visible) return;
+      setFormatStates({
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        alignLeft: document.queryCommandState('justifyLeft'),
+        alignCenter: document.queryCommandState('justifyCenter'),
+        alignRight: document.queryCommandState('justifyRight'),
+        alignJustify: document.queryCommandState('justifyFull')
+      });
+    };
+
+    document.addEventListener('selectionchange', updateFormatStates);
+    return () => document.removeEventListener('selectionchange', updateFormatStates);
+  }, [visible]);
+
   useEffect(() => {
     setSelectedIndices(new Set(matches.map(m => m.index)));
   }, [matches]);
@@ -101,6 +129,18 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
+    // 执行完立即更新一次状态
+    setTimeout(() => {
+      setFormatStates(prev => ({
+        ...prev,
+        bold: document.queryCommandState('bold'),
+        italic: document.queryCommandState('italic'),
+        alignLeft: document.queryCommandState('justifyLeft'),
+        alignCenter: document.queryCommandState('justifyCenter'),
+        alignRight: document.queryCommandState('justifyRight'),
+        alignJustify: document.queryCommandState('justifyFull')
+      }));
+    }, 10);
   };
 
   const applyBatchAlign = (alignment: string) => {
@@ -264,6 +304,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
   const containerClass = "flex items-center gap-0.5 bg-white rounded-xl p-0.5 border border-gray-200 shadow-sm shrink-0";
   const buttonClass = "p-1.5 hover:bg-gray-50 rounded-lg text-gray-600 transition-all active:scale-95";
+  const activeButtonClass = "p-1.5 bg-purple-50 text-purple-600 rounded-lg transition-all active:scale-95 border border-purple-100";
 
   return (
     <>
@@ -386,17 +427,51 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
             <div className="flex items-center justify-around w-full">
                 <div className={containerClass}>
-                    <button onClick={() => handleFormat('bold')} className={buttonClass} title="加粗"><BoldIcon className="w-5 h-5" /></button>
-                    <button onClick={() => handleFormat('italic')} className={buttonClass} title="斜体"><ItalicIcon className="w-5 h-5" /></button>
+                    <button 
+                      onClick={() => handleFormat('bold')} 
+                      className={formatStates.bold ? activeButtonClass : buttonClass} 
+                      title="加粗"
+                    >
+                      <BoldIcon className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => handleFormat('italic')} 
+                      className={formatStates.italic ? activeButtonClass : buttonClass} 
+                      title="斜体"
+                    >
+                      <ItalicIcon className="w-5 h-5" />
+                    </button>
                 </div>
 
                 <div className={containerClass}>
-                    <button onClick={() => handleFormat('justifyLeft')} className={buttonClass} title="左对齐"><Bars3BottomLeftIcon className="w-5 h-5" /></button>
-                    <button onClick={() => handleFormat('justifyCenter')} className={buttonClass} title="居中">
+                    <button 
+                      onClick={() => handleFormat('justifyLeft')} 
+                      className={formatStates.alignLeft ? activeButtonClass : buttonClass} 
+                      title="左对齐"
+                    >
+                      <Bars3BottomLeftIcon className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => handleFormat('justifyCenter')} 
+                      className={formatStates.alignCenter ? activeButtonClass : buttonClass} 
+                      title="居中"
+                    >
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M3 4h18v2H3V4zm4 5h10v2H7V9zm-4 5h18v2H3v-2zm4 5h10v2H7v-2z" /></svg>
                     </button>
-                    <button onClick={() => handleFormat('justifyRight')} className={buttonClass} title="右对齐"><Bars3BottomRightIcon className="w-5 h-5" /></button>
-                    <button onClick={() => handleFormat('justifyFull')} className={buttonClass} title="两端对齐"><Bars3Icon className="w-5 h-5" /></button>
+                    <button 
+                      onClick={() => handleFormat('justifyRight')} 
+                      className={formatStates.alignRight ? activeButtonClass : buttonClass} 
+                      title="右对齐"
+                    >
+                      <Bars3BottomRightIcon className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => handleFormat('justifyFull')} 
+                      className={formatStates.alignJustify ? activeButtonClass : buttonClass} 
+                      title="两端对齐"
+                    >
+                      <Bars3Icon className="w-5 h-5" />
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
