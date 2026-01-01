@@ -198,6 +198,7 @@ const App: React.FC = () => {
 
   const handleDeletePreset = (id: string) => {
     setPresets(prev => prev.filter(p => p.id !== id));
+    if (activePresetId === id) setActivePresetId(null);
   };
 
   const handleLoadPreset = (preset: ContentPreset) => {
@@ -205,7 +206,6 @@ const App: React.FC = () => {
       ...prev,
       title: preset.title,
       subtitle: preset.subtitle,
-      // 切换草稿时，如果草稿预设中正文为空，则保留当前已有的正文内容
       bodyText: preset.bodyText || prev.bodyText,
       secondaryBodyText: preset.secondaryBodyText || prev.secondaryBodyText || '',
       category: preset.category,
@@ -235,6 +235,22 @@ const App: React.FC = () => {
       const newId = handleSavePreset(name);
       setActivePresetId(newId);
       setIsCreatingNew(false);
+    } else if (activePresetId) {
+      // 核心修复：如果是编辑已有草稿，同步更新草稿列表中的分类及其他信息
+      setPresets(prev => prev.map(p => 
+        p.id === activePresetId 
+          ? { 
+              ...p, 
+              title: state.title, 
+              subtitle: state.subtitle, 
+              bodyText: state.bodyText, 
+              secondaryBodyText: state.secondaryBodyText,
+              category: state.category,
+              author: state.author,
+              name: state.title || p.name 
+            } 
+          : p
+      ));
     }
     setShowContentModal(false);
   };
@@ -261,7 +277,7 @@ const App: React.FC = () => {
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
-        exportOptions.height = 533; // 3:4 ratio for 400 width
+        exportOptions.height = 533; 
         exportOptions.style = {
            width: '400px',
            height: '533px',
