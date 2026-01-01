@@ -149,7 +149,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   };
   
   const getBodyClasses = () => {
-      // 增加 text-current 以确保全局颜色应用，增加特定对齐类
+      // 这里的 bodyTextAlign 仅作为默认回退。具体的段落对齐将由内容中的内联样式决定。
       return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()} transition-all duration-300 [&_*]:text-inherit`;
   };
 

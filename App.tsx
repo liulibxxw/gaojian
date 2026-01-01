@@ -205,6 +205,9 @@ const App: React.FC = () => {
       ...prev,
       title: preset.title,
       subtitle: preset.subtitle,
+      // 切换草稿时，如果草稿预设中正文为空，则保留当前已有的正文内容
+      bodyText: preset.bodyText || prev.bodyText,
+      secondaryBodyText: preset.secondaryBodyText || prev.secondaryBodyText || '',
       category: preset.category,
       author: preset.author
     }));

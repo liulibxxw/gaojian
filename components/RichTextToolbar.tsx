@@ -31,10 +31,14 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   const [palettePosition, setPalettePosition] = useState<{left: number, bottom: number} | null>(null);
   const [batchFontSize, setBatchFontSize] = useState(13);
 
-  // 状态检测：加粗和斜体依然基于文档选区，因为它们是行内样式
+  // 状态检测：包含对齐方式
   const [formatStates, setFormatStates] = useState({
     bold: false,
-    italic: false
+    italic: false,
+    alignLeft: false,
+    alignCenter: false,
+    alignRight: false,
+    alignJustify: false
   });
   
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -73,13 +77,17 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
     });
   }, [allParagraphs, searchChar, isRegexMode]);
 
-  // 监听选区变化以更新加粗、斜体状态
+  // 监听选区变化以更新加粗、斜体、对齐状态
   useEffect(() => {
     const updateFormatStates = () => {
       if (!visible) return;
       setFormatStates({
         bold: document.queryCommandState('bold'),
-        italic: document.queryCommandState('italic')
+        italic: document.queryCommandState('italic'),
+        alignLeft: document.queryCommandState('justifyLeft'),
+        alignCenter: document.queryCommandState('justifyCenter'),
+        alignRight: document.queryCommandState('justifyRight'),
+        alignJustify: document.queryCommandState('justifyFull'),
       });
     };
 
@@ -121,17 +129,17 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
+    // 操作后立即刷新一次状态显示
     setTimeout(() => {
       setFormatStates({
         bold: document.queryCommandState('bold'),
-        italic: document.queryCommandState('italic')
+        italic: document.queryCommandState('italic'),
+        alignLeft: document.queryCommandState('justifyLeft'),
+        alignCenter: document.queryCommandState('justifyCenter'),
+        alignRight: document.queryCommandState('justifyRight'),
+        alignJustify: document.queryCommandState('justifyFull'),
       });
     }, 10);
-  };
-
-  // 修改对齐方式直接改变 state.bodyTextAlign，这会作用于 CoverPreview 的容器类
-  const handleTextAlignChange = (align: string) => {
-    onChange({ bodyTextAlign: align });
   };
 
   const applyBatchAlign = (alignment: string) => {
@@ -436,29 +444,29 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
                 <div className={containerClass}>
                     <button 
-                      onClick={() => handleTextAlignChange('text-left')} 
-                      className={state.bodyTextAlign === 'text-left' ? activeButtonClass : buttonClass} 
+                      onClick={() => handleFormat('justifyLeft')} 
+                      className={formatStates.alignLeft ? activeButtonClass : buttonClass} 
                       title="左对齐"
                     >
                       <Bars3BottomLeftIcon className="w-5 h-5" />
                     </button>
                     <button 
-                      onClick={() => handleTextAlignChange('text-center')} 
-                      className={state.bodyTextAlign === 'text-center' ? activeButtonClass : buttonClass} 
+                      onClick={() => handleFormat('justifyCenter')} 
+                      className={formatStates.alignCenter ? activeButtonClass : buttonClass} 
                       title="居中"
                     >
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M3 4h18v2H3V4zm4 5h10v2H7V9zm-4 5h18v2H3v-2zm4 5h10v2H7v-2z" /></svg>
                     </button>
                     <button 
-                      onClick={() => handleTextAlignChange('text-right')} 
-                      className={state.bodyTextAlign === 'text-right' ? activeButtonClass : buttonClass} 
+                      onClick={() => handleFormat('justifyRight')} 
+                      className={formatStates.alignRight ? activeButtonClass : buttonClass} 
                       title="右对齐"
                     >
                       <Bars3BottomRightIcon className="w-5 h-5" />
                     </button>
                     <button 
-                      onClick={() => handleTextAlignChange('text-justify')} 
-                      className={state.bodyTextAlign === 'text-justify' ? activeButtonClass : buttonClass} 
+                      onClick={() => handleFormat('justifyFull')} 
+                      className={formatStates.alignJustify ? activeButtonClass : buttonClass} 
                       title="两端对齐"
                     >
                       <Bars3Icon className="w-5 h-5" />
