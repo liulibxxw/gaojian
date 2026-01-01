@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { CoverState, ContentPreset } from './types';
 import { 
@@ -119,7 +118,7 @@ const App: React.FC = () => {
     }
   });
   const [showContentModal, setShowContentModal] = useState(false);
-  const [activePresetId, setActivePresetId] = useState<string | null>('preset_3');
+  const [activePresetId, setActivePresetId] = useState<string | null>('preset_jianghu');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
@@ -206,9 +205,6 @@ const App: React.FC = () => {
       ...prev,
       title: preset.title,
       subtitle: preset.subtitle,
-      // 保留已有的正文内容，不从预设中覆盖
-      // bodyText: preset.bodyText,
-      // secondaryBodyText: preset.secondaryBodyText || '',
       category: preset.category,
       author: preset.author
     }));
@@ -262,10 +258,10 @@ const App: React.FC = () => {
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
-        exportOptions.height = 440; // 440 * 4 = 1760
+        exportOptions.height = 533; // 3:4 ratio for 400 width
         exportOptions.style = {
            width: '400px',
-           height: '440px',
+           height: '533px',
            maxWidth: 'none',
            maxHeight: 'none',
            transform: 'none',

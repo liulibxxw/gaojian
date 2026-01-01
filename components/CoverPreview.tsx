@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, forwardRef, useRef } from 'react';
 import { CoverState } from '../types';
 
@@ -150,7 +149,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   };
   
   const getBodyClasses = () => {
-      return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()}`;
+      // 增加 text-current 以确保全局颜色应用，增加特定对齐类
+      return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()} transition-all duration-300 [&_*]:text-inherit`;
   };
 
   const renderTechDecorations = () => (
@@ -603,7 +603,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
       className={`relative shadow-2xl antialiased overflow-hidden w-[400px] shrink-0 ${
         isLongText 
           ? 'h-auto min-h-[600px] md:min-h-[712px]' 
-          : 'h-[440px]'
+          : 'h-[533px]'
       }`}
       style={renderingIsolation}
     >
