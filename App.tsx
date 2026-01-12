@@ -199,18 +199,44 @@ const App: React.FC = () => {
     if (activePresetId === id) setActivePresetId(null);
   };
 
-  // [禁止修改此逻辑]：切换草稿时必须保留当前编辑器内的文本，除非草稿本身带有非空文本内容。
-  // 这确保了用户在不同布局或草稿间切换时，辛苦输入的文字不会意外丢失。
+  /**
+   * [禁止修改此逻辑 - CRITICAL]
+   * 切换草稿时必须执行“智能合并”策略，而非简单的完全覆盖：
+   * 1. 核心目标：绝对保护用户当前正在编辑的长文本内容不被丢失。
+   * 2. 行为准则：如果目标草稿（无论是默认草稿还是自定义草稿）的 bodyText 实际上是空的
+   *    （通过 DOM 文本内容深度校验），则必须强制保留编辑器当前的内容。
+   * 3. 只有当目标草稿包含有效的非空内容时，才允许替换当前内容。
+   */
   const handleLoadPreset = (preset: ContentPreset) => {
-    setState(prev => ({
-      ...prev,
-      title: preset.title,
-      subtitle: preset.subtitle,
-      bodyText: preset.bodyText?.trim() ? preset.bodyText : prev.bodyText,
-      secondaryBodyText: preset.secondaryBodyText?.trim() ? preset.secondaryBodyText : (prev.secondaryBodyText || ''),
-      category: preset.category,
-      author: preset.author
-    }));
+    setState(prev => {
+      // 内部辅助函数：判断 HTML 字符串是否在视觉上为空（排除 HTML 标签干扰）
+      const isHtmlEffectivelyEmpty = (html: string | undefined): boolean => {
+        if (!html || html.trim() === '') return true;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        // 提取纯文本并剔除空白字符
+        const text = tempDiv.textContent || tempDiv.innerText || "";
+        return text.trim().length === 0;
+      };
+
+      // 决定最终文本：若草稿文本无效则沿用当前文本，否则采用草稿文本
+      const finalBodyText = isHtmlEffectivelyEmpty(preset.bodyText) ? prev.bodyText : preset.bodyText;
+      
+      // 同理处理里象文本（针对二象性布局）
+      const finalSecondaryBodyText = isHtmlEffectivelyEmpty(preset.secondaryBodyText) 
+        ? prev.secondaryBodyText 
+        : (preset.secondaryBodyText || '');
+
+      return {
+        ...prev,
+        title: preset.title,
+        subtitle: preset.subtitle,
+        bodyText: finalBodyText,
+        secondaryBodyText: finalSecondaryBodyText,
+        category: preset.category,
+        author: preset.author
+      };
+    });
     setActivePresetId(preset.id);
   };
 
@@ -329,7 +355,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full supports-[height:100dvh]:h-[100dvh] bg-gray-50 overflow-hidden text-gray-800">
       
-      <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
+      <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)] shrink-0 h-full overflow-hidden">
         <EditorControls 
           state={state} 
           onChange={handleStateChange}
