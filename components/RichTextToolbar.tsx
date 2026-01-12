@@ -49,6 +49,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   });
   
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const buttonsRowRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
 
   const currentSizeVal = useMemo(() => {
@@ -285,19 +286,24 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
   const calculatePalettePosition = (target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
+      const parentRect = buttonsRowRef.current?.getBoundingClientRect();
+      if (!parentRect) return;
+
       const screenW = window.innerWidth;
       const PALETTE_WIDTH = 280; 
       const PADDING = 10;
-      // 这里的 rect.top 是相对于视口顶部的。
-      // 因为父容器已经平移，这里的 rect 包含平移后的坐标。
-      // bottom 设置为相对于窗口顶部的距离减去 10px。
-      const bottom = window.innerHeight - rect.top + 10; 
-      let left = rect.left + rect.width / 2;
+      
+      // 计算按钮中心相对于按钮行容器的 left 值
+      let left = rect.left - parentRect.left + rect.width / 2;
+      
+      const toolbarW = parentRect.width;
       const minLeft = PALETTE_WIDTH / 2 + PADDING;
-      const maxLeft = screenW - PALETTE_WIDTH / 2 - PADDING;
+      const maxLeft = toolbarW - PALETTE_WIDTH / 2 - PADDING;
+      
       if (left < minLeft) left = minLeft;
       if (left > maxLeft) left = maxLeft;
-      setPalettePosition({ left, bottom });
+      
+      setPalettePosition({ left, bottom: 0 }); 
   };
 
   const toggleTextColor = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -541,7 +547,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                 </div>
             )}
 
-            <div className="flex items-center justify-around w-full">
+            <div ref={buttonsRowRef} className="relative flex items-center justify-around w-full">
                 <div className={containerClass}>
                     <button 
                       onClick={() => handleFormat('bold')} 
@@ -615,63 +621,62 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                         <PencilIcon className="w-5 h-5" />
                     </button>
                 </div>
-            </div>
-        </div>
 
-        {(showTextColorPalette || showSizePalette) && palettePosition && (
-            <div 
-                ref={paletteRef}
-                className="fixed z-[60] bg-white border border-gray-100 shadow-xl rounded-xl p-3 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2 fade-in lg:hidden transition-transform duration-300 ease-out"
-                style={{
-                    left: palettePosition.left,
-                    bottom: palettePosition.bottom,
-                    transform: `translateX(-50%) translateY(-${keyboardHeight}px)`,
-                    width: 'max-content',
-                    maxWidth: '90vw'
-                }}
-                onMouseDown={preventFocusLoss} 
-            >
-                {showSizePalette && (
-                    <div className="flex items-center gap-2 px-2 py-1">
-                        <button 
-                            onClick={() => handleSizeChange(Math.max(10, currentSizeVal - 1))}
-                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors"
-                        >
-                            <MinusIcon className="w-4 h-4" />
-                        </button>
-                        
-                        <input 
-                            type="range" 
-                            min="10" 
-                            max="40" 
-                            step="1" 
-                            value={currentSizeVal} 
-                            onChange={(e) => handleSizeChange(parseInt(e.target.value))}
-                            className="w-32 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                        />
+                {(showTextColorPalette || showSizePalette) && palettePosition && (
+                    <div 
+                        ref={paletteRef}
+                        className="absolute bottom-[calc(100%+12px)] z-[60] bg-white border border-gray-100 shadow-xl rounded-xl p-3 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2 fade-in lg:hidden transition-all duration-300"
+                        style={{
+                            left: palettePosition.left,
+                            transform: `translateX(-50%)`,
+                            width: 'max-content',
+                            maxWidth: '90vw'
+                        }}
+                        onMouseDown={preventFocusLoss} 
+                    >
+                        {showSizePalette && (
+                            <div className="flex items-center gap-2 px-2 py-1">
+                                <button 
+                                    onClick={() => handleSizeChange(Math.max(10, currentSizeVal - 1))}
+                                    className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <MinusIcon className="w-4 h-4" />
+                                </button>
+                                
+                                <input 
+                                    type="range" 
+                                    min="10" 
+                                    max="40" 
+                                    step="1" 
+                                    value={currentSizeVal} 
+                                    onChange={(e) => handleSizeChange(parseInt(e.target.value))}
+                                    className="w-32 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                />
 
-                         <button 
-                            onClick={() => handleSizeChange(Math.min(40, currentSizeVal + 1))}
-                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors"
-                        >
-                            <PlusIcon className="w-4 h-4" />
-                        </button>
-                        
-                        <span className="text-xs font-mono font-bold text-gray-600 w-8 text-center ml-1">{currentSizeVal}</span>
+                                <button 
+                                    onClick={() => handleSizeChange(Math.min(40, currentSizeVal + 1))}
+                                    className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <PlusIcon className="w-4 h-4" />
+                                </button>
+                                
+                                <span className="text-xs font-mono font-bold text-gray-600 w-8 text-center ml-1">{currentSizeVal}</span>
+                            </div>
+                        )}
+
+                        {showTextColorPalette && TEXT_PALETTE.map((color) => (
+                            <button
+                                key={color.value}
+                                onClick={() => handleTextColorChange(color.value)}
+                                className="w-8 h-8 rounded-full border shadow-sm hover:scale-110 transition-transform border-gray-200"
+                                style={{ backgroundColor: color.value }}
+                                title={color.label}
+                            />
+                        ))}
                     </div>
                 )}
-
-                {showTextColorPalette && TEXT_PALETTE.map((color) => (
-                    <button
-                        key={color.value}
-                        onClick={() => handleTextColorChange(color.value)}
-                        className="w-8 h-8 rounded-full border shadow-sm hover:scale-110 transition-transform border-gray-200"
-                        style={{ backgroundColor: color.value }}
-                        title={color.label}
-                    />
-                ))}
             </div>
-        )}
+        </div>
     </>
   );
 };
