@@ -120,6 +120,7 @@ const App: React.FC = () => {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const bgColorPaletteRef = useRef<HTMLDivElement>(null);
@@ -134,6 +135,26 @@ const App: React.FC = () => {
     localStorage.setItem('coverPresets_v3', JSON.stringify(presets));
   }, [presets]);
   
+  // 监听虚拟键盘高度
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const vh = window.innerHeight;
+      const vvh = window.visualViewport!.height;
+      const offset = vh - vvh;
+      // 阈值判断，避免某些浏览器的工具栏微小变化触发
+      setKeyboardHeight(offset > 100 ? offset : 0);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    };
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (
@@ -209,20 +230,15 @@ const App: React.FC = () => {
    */
   const handleLoadPreset = (preset: ContentPreset) => {
     setState(prev => {
-      // 内部辅助函数：判断 HTML 字符串是否在视觉上为空（排除 HTML 标签干扰）
       const isHtmlEffectivelyEmpty = (html: string | undefined): boolean => {
         if (!html || html.trim() === '') return true;
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
-        // 提取纯文本并剔除空白字符
         const text = tempDiv.textContent || tempDiv.innerText || "";
         return text.trim().length === 0;
       };
 
-      // 决定最终文本：若草稿文本无效则沿用当前文本，否则采用草稿文本
       const finalBodyText = isHtmlEffectivelyEmpty(preset.bodyText) ? prev.bodyText : preset.bodyText;
-      
-      // 同理处理里象文本（针对二象性布局）
       const finalSecondaryBodyText = isHtmlEffectivelyEmpty(preset.secondaryBodyText) 
         ? prev.secondaryBodyText 
         : (preset.secondaryBodyText || '');
@@ -396,7 +412,11 @@ const App: React.FC = () => {
                 <div 
                     ref={bgColorPaletteRef}
                     className="fixed z-50 bottom-32 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
-                    style={{ width: 'max-content', maxWidth: '90vw' }}
+                    style={{ 
+                        width: 'max-content', 
+                        maxWidth: '90vw',
+                        transform: `translateX(-50%) translateY(-${keyboardHeight}px)` 
+                    }}
                 >
                     {PALETTE.map((color) => (
                         <button
@@ -413,7 +433,10 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
+            <div 
+                className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white transition-transform duration-300 ease-out"
+                style={{ transform: `translateY(-${keyboardHeight}px)` }}
+            >
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 
@@ -443,6 +466,7 @@ const App: React.FC = () => {
                         visible={true}
                         state={state}
                         onChange={handleStateChange}
+                        keyboardHeight={keyboardHeight}
                     />}
                 </div>
 

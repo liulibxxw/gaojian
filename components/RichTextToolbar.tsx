@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   BoldIcon, 
@@ -20,9 +21,10 @@ interface RichTextToolbarProps {
   visible: boolean;
   state: CoverState;
   onChange: (newState: Partial<CoverState>) => void;
+  keyboardHeight?: number;
 }
 
-const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onChange }) => {
+const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onChange, keyboardHeight = 0 }) => {
   const [showTextColorPalette, setShowTextColorPalette] = useState(false);
   const [showSizePalette, setShowSizePalette] = useState(false);
   const [showSearchAlign, setShowSearchAlign] = useState(false);
@@ -286,6 +288,9 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
       const screenW = window.innerWidth;
       const PALETTE_WIDTH = 280; 
       const PADDING = 10;
+      // 这里的 rect.top 是相对于视口顶部的。
+      // 因为父容器已经平移，这里的 rect 包含平移后的坐标。
+      // bottom 设置为相对于窗口顶部的距离减去 10px。
       const bottom = window.innerHeight - rect.top + 10; 
       let left = rect.left + rect.width / 2;
       const minLeft = PALETTE_WIDTH / 2 + PADDING;
@@ -526,7 +531,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                                                 <PlusIcon className="w-4 h-4" />
                                             </button>
                                             
-                                            <span className="text-[10px] font-mono font-bold text-gray-600 w-8 text-center">{batchFontSize}</span>
+                                            <span className="text-[10px] font-mono font-bold text-gray-600 w-8 text-center ml-1">{batchFontSize}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -616,11 +621,11 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
         {(showTextColorPalette || showSizePalette) && palettePosition && (
             <div 
                 ref={paletteRef}
-                className="fixed z-[60] bg-white border border-gray-100 shadow-xl rounded-xl p-3 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2 fade-in lg:hidden"
+                className="fixed z-[60] bg-white border border-gray-100 shadow-xl rounded-xl p-3 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2 fade-in lg:hidden transition-transform duration-300 ease-out"
                 style={{
                     left: palettePosition.left,
                     bottom: palettePosition.bottom,
-                    transform: 'translateX(-50%)',
+                    transform: `translateX(-50%) translateY(-${keyboardHeight}px)`,
                     width: 'max-content',
                     maxWidth: '90vw'
                 }}
