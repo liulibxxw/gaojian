@@ -199,13 +199,15 @@ const App: React.FC = () => {
     if (activePresetId === id) setActivePresetId(null);
   };
 
+  // [禁止修改此逻辑]：切换草稿时必须保留当前编辑器内的文本，除非草稿本身带有非空文本内容。
+  // 这确保了用户在不同布局或草稿间切换时，辛苦输入的文字不会意外丢失。
   const handleLoadPreset = (preset: ContentPreset) => {
     setState(prev => ({
       ...prev,
       title: preset.title,
       subtitle: preset.subtitle,
-      bodyText: preset.bodyText || prev.bodyText,
-      secondaryBodyText: preset.secondaryBodyText || prev.secondaryBodyText || '',
+      bodyText: preset.bodyText?.trim() ? preset.bodyText : prev.bodyText,
+      secondaryBodyText: preset.secondaryBodyText?.trim() ? preset.secondaryBodyText : (prev.secondaryBodyText || ''),
       category: preset.category,
       author: preset.author
     }));

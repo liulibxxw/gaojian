@@ -178,7 +178,7 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
   };
 
   return (
-    <div className="w-full h-40 bg-white/90 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col pointer-events-auto">
+    <div className="w-full h-44 bg-white/90 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col pointer-events-auto">
        <div className="px-4 py-2 flex justify-between items-center border-b border-gray-100 shrink-0 h-10">
           <span className="text-xs font-bold text-gray-500">我的草稿 ({presets.length})</span>
           {isSaving && (
@@ -200,7 +200,7 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
        <div className="flex-1 overflow-x-auto overflow-y-hidden flex items-center gap-3 px-4 py-2 custom-scrollbar">
           <div 
             onClick={onCreateNew}
-            className="shrink-0 w-28 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 cursor-pointer hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 bg-gray-50/50"
+            className="shrink-0 w-28 h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 cursor-pointer hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 bg-gray-50/50"
           >
              <PlusIcon className="w-6 h-6" />
              <span className="text-[10px] font-bold">新建草稿</span>
@@ -218,7 +218,7 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
                     if (onLoadPreset) onLoadPreset(preset);
                   }
                 }}
-                className={`relative shrink-0 w-28 h-24 bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden transition-all duration-200 ${isActive ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`relative shrink-0 w-28 h-28 bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden transition-all duration-200 ${isActive ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
               >
                  <div className={`absolute top-0 left-0 h-full w-1 ${getPresetColor(idx)}`}></div>
                  <div className="p-2 pl-3 flex flex-col h-full">
