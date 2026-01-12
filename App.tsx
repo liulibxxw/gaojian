@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { CoverState, ContentPreset } from './types';
+import { CoverState, ContentPreset, EditorTab } from './types';
 import { 
   INITIAL_TITLE, 
   INITIAL_SUBTITLE, 
@@ -14,10 +15,9 @@ import {
   INITIAL_CATEGORY
 } from './constants';
 import CoverPreview from './components/CoverPreview';
-import EditorControls, { EditorTab, MobileDraftsStrip, MobileStylePanel, ContentEditorModal } from './components/EditorControls';
-import ExportModal from './components/ExportModal';
+import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './components/EditorControls';
 import RichTextToolbar from './components/RichTextToolbar';
-import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
+import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftLeftIcon, SwatchIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
@@ -106,9 +106,7 @@ const App: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<EditorTab | undefined>(undefined);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportImage, setExportImage] = useState<string | null>(null);
   const [presets, setPresets] = useState<ContentPreset[]>(() => {
     try {
       const saved = localStorage.getItem('coverPresets_v3');
@@ -236,7 +234,6 @@ const App: React.FC = () => {
       setActivePresetId(newId);
       setIsCreatingNew(false);
     } else if (activePresetId) {
-      // 核心修复：如果是编辑已有草稿，同步更新草稿列表中的分类及其他信息
       setPresets(prev => prev.map(p => 
         p.id === activePresetId 
           ? { 
@@ -255,12 +252,10 @@ const App: React.FC = () => {
     setShowContentModal(false);
   };
 
-  const handleExport = async () => {
+  const handleExport = async (filename: string) => {
     if (!previewRef.current) return;
     
     setIsExporting(true);
-    setExportImage(null);
-    setShowExportModal(true);
 
     try {
       await document.fonts.ready;
@@ -297,23 +292,16 @@ const App: React.FC = () => {
       }
 
       const dataUrl = await toPng(previewRef.current, exportOptions);
-
-      setExportImage(dataUrl);
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+      link.click();
     } catch (error) {
       console.error("Export failed:", error);
       alert("导出失败，请重试");
-      setShowExportModal(false);
     } finally {
       setIsExporting(false);
     }
-  };
-
-  const downloadImage = () => {
-    if (!exportImage) return;
-    const link = document.createElement('a');
-    link.href = exportImage;
-    link.download = `cover-${Date.now()}.png`;
-    link.click();
   };
 
   const toggleMobileTab = (tab: EditorTab) => {
@@ -334,12 +322,6 @@ const App: React.FC = () => {
     setActiveTab(undefined);
     setShowBgColorPalette(false);
     handleStateChange({ mode: state.mode === 'cover' ? 'long-text' : 'cover' });
-  };
-  
-  const handleExportClick = () => {
-      setActiveTab(undefined);
-      setShowBgColorPalette(false);
-      handleExport();
   };
 
   return (
@@ -422,6 +404,12 @@ const App: React.FC = () => {
                         onChange={handleStateChange} 
                         onExport={handleExport}
                     />}
+                    {activeTab === 'export' && <MobileExportPanel
+                        state={state}
+                        onChange={handleStateChange}
+                        onExport={handleExport}
+                        isExporting={isExporting}
+                    />}
                     
                     {!activeTab && <RichTextToolbar
                         visible={true}
@@ -453,22 +441,13 @@ const App: React.FC = () => {
                         <ArrowsRightLeftIcon className="w-6 h-6" />
                         <span className="text-[10px] font-bold">{state.mode === 'cover' ? '长图' : '封面'}</span>
                       </button>
-                      <button onClick={handleExportClick} className="flex flex-col items-center gap-1 text-gray-500 transition-colors w-16">
+                      <button onClick={() => toggleMobileTab('export')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'export' ? 'text-purple-600' : 'text-gray-500'}`}>
                         <ArrowDownTrayIcon className="w-6 h-6" />
                         <span className="text-[10px] font-bold">导出</span>
                       </button>
                 </div>
             </div>
         </div>
-
-        {showExportModal && (
-          <ExportModal 
-            imageUrl={exportImage} 
-            isExporting={isExporting}
-            onClose={() => setShowExportModal(false)}
-            onDownload={downloadImage}
-          />
-        )}
 
         <ContentEditorModal 
           isOpen={showContentModal}

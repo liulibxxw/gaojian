@@ -10,7 +10,8 @@ import {
   MinusIcon,
   PlusIcon,
   MagnifyingGlassIcon,
-  CheckIcon
+  CheckIcon,
+  ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
 import { TEXT_PALETTE } from '../constants';
 import { CoverState } from '../types';
@@ -30,6 +31,10 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [palettePosition, setPalettePosition] = useState<{left: number, bottom: number} | null>(null);
   const [batchFontSize, setBatchFontSize] = useState(13);
+
+  // 分段对齐相关状态
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [rowEditData, setRowEditData] = useState({ left: '', center: '', right: '' });
 
   // 状态检测：包含对齐方式
   const [formatStates, setFormatStates] = useState({
@@ -232,9 +237,46 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
       }
   };
 
+  // 分段对齐辅助功能
+  const assignSelection = (field: 'left' | 'center' | 'right') => {
+    const selection = window.getSelection();
+    if (selection && selection.toString()) {
+      setRowEditData(prev => ({ ...prev, [field]: selection.toString() }));
+    }
+  };
+
+  const submitRowEdit = (index: number) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = state.bodyText || "";
+    let paragraphs = Array.from(tempDiv.children) as HTMLElement[];
+    
+    if (paragraphs.length === 0 && tempDiv.innerText.trim()) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = tempDiv.innerHTML;
+        tempDiv.innerHTML = '';
+        tempDiv.appendChild(wrapper);
+        paragraphs = [wrapper];
+    }
+
+    const target = paragraphs[index];
+    if (target) {
+        const rowHtml = `<div class="multi-align-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; width: 100%; gap: 4px; margin: 4px 0;">
+            <div style="text-align: left;">${rowEditData.left || '&nbsp;'}</div>
+            <div style="text-align: center;">${rowEditData.center || '&nbsp;'}</div>
+            <div style="text-align: right;">${rowEditData.right || '&nbsp;'}</div>
+        </div>`;
+        const newEl = document.createElement('div');
+        newEl.innerHTML = rowHtml;
+        target.replaceWith(newEl.firstChild!);
+        onChange({ bodyText: tempDiv.innerHTML });
+        setEditingIndex(null);
+        setRowEditData({ left: '', center: '', right: '' });
+    }
+  };
+
   const preventFocusLoss = (e: React.MouseEvent | React.TouchEvent) => {
     const target = e.target as HTMLElement;
-    if (target.tagName !== 'INPUT' && !target.closest('.interactive-area')) {
+    if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.closest('.interactive-area')) {
        e.preventDefault();
     }
   };
@@ -348,19 +390,89 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                                     {selectedIndices.size === matches.length ? '取消全选' : '全选'}
                                 </button>
                             </div>
-                            <div className="max-h-24 overflow-y-auto flex flex-col gap-1 custom-scrollbar">
-                                {matches.map((m) => (
-                                    <div 
-                                        key={m.index} 
-                                        onClick={() => toggleSelection(m.index)}
-                                        className={`flex items-center gap-2 p-2 rounded-lg border text-[10px] transition-all cursor-pointer ${selectedIndices.has(m.index) ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-white border-gray-100 text-gray-500'}`}
-                                    >
-                                        <div className={`w-3 h-3 rounded flex items-center justify-center border transition-all ${selectedIndices.has(m.index) ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300'}`}>
-                                            {selectedIndices.has(m.index) && <CheckIcon className="w-2 h-2" />}
+                            <div className="max-h-48 overflow-y-auto flex flex-col gap-2 custom-scrollbar pr-1">
+                                {matches.map((m) => {
+                                    const isEditing = editingIndex === m.index;
+                                    return (
+                                        <div 
+                                            key={m.index} 
+                                            className={`flex flex-col gap-2 p-2 rounded-lg border text-[10px] transition-all bg-white border-gray-100 shadow-sm`}
+                                        >
+                                            <div className="flex items-start gap-2">
+                                                <div 
+                                                    onClick={() => toggleSelection(m.index)}
+                                                    className={`shrink-0 mt-0.5 w-3 h-3 rounded flex items-center justify-center border transition-all cursor-pointer ${selectedIndices.has(m.index) ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-300'}`}
+                                                >
+                                                    {selectedIndices.has(m.index) && <CheckIcon className="w-2 h-2" />}
+                                                </div>
+                                                <span className="flex-1 select-text leading-relaxed text-gray-500 overflow-hidden break-words">{m.text || "(空行)"}</span>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (isEditing) setEditingIndex(null);
+                                                        else {
+                                                            setEditingIndex(m.index);
+                                                            setRowEditData({ left: m.text, center: '', right: '' });
+                                                        }
+                                                    }}
+                                                    className={`shrink-0 p-1 rounded transition-colors ${isEditing ? 'text-purple-600 bg-purple-50' : 'text-gray-400 hover:text-purple-500'}`}
+                                                >
+                                                    <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+
+                                            {isEditing && (
+                                                <div className="flex flex-col gap-2 p-2 bg-gray-50 rounded-xl border border-purple-100 animate-in zoom-in-95 interactive-area">
+                                                    <div className="flex justify-around gap-1">
+                                                        <button 
+                                                            onMouseDown={(e) => { e.preventDefault(); assignSelection('left'); }}
+                                                            className="flex-1 py-1 px-1 text-[8px] font-bold bg-white border border-gray-200 rounded text-gray-600 active:scale-95 shadow-sm"
+                                                        >
+                                                            选中→左
+                                                        </button>
+                                                        <button 
+                                                            onMouseDown={(e) => { e.preventDefault(); assignSelection('center'); }}
+                                                            className="flex-1 py-1 px-1 text-[8px] font-bold bg-white border border-gray-200 rounded text-gray-600 active:scale-95 shadow-sm"
+                                                        >
+                                                            选中→中
+                                                        </button>
+                                                        <button 
+                                                            onMouseDown={(e) => { e.preventDefault(); assignSelection('right'); }}
+                                                            className="flex-1 py-1 px-1 text-[8px] font-bold bg-white border border-gray-200 rounded text-gray-600 active:scale-95 shadow-sm"
+                                                        >
+                                                            选中→右
+                                                        </button>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-1">
+                                                        <textarea 
+                                                            value={rowEditData.left} 
+                                                            onChange={(e) => setRowEditData(prev => ({ ...prev, left: e.target.value }))}
+                                                            className="h-10 text-[9px] p-1 border border-gray-200 rounded resize-none focus:border-purple-300 outline-none bg-white" 
+                                                            placeholder="左侧文字"
+                                                        />
+                                                        <textarea 
+                                                            value={rowEditData.center} 
+                                                            onChange={(e) => setRowEditData(prev => ({ ...prev, center: e.target.value }))}
+                                                            className="h-10 text-[9px] p-1 border border-gray-200 rounded resize-none focus:border-purple-300 outline-none bg-white" 
+                                                            placeholder="居中文字"
+                                                        />
+                                                        <textarea 
+                                                            value={rowEditData.right} 
+                                                            onChange={(e) => setRowEditData(prev => ({ ...prev, right: e.target.value }))}
+                                                            className="h-10 text-[9px] p-1 border border-gray-200 rounded resize-none focus:border-purple-300 outline-none bg-white" 
+                                                            placeholder="右侧文字"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => submitRowEdit(m.index)}
+                                                        className="py-1.5 bg-purple-600 text-white text-[10px] font-bold rounded-lg shadow-sm active:scale-95 transition-transform"
+                                                    >
+                                                        确认并应用此行对齐
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
-                                        <span className="truncate flex-1">{m.text || "(空行)"}</span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             
                             <div className="flex flex-col gap-2 mt-2">
