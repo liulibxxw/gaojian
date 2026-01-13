@@ -17,8 +17,53 @@ import {
 import CoverPreview from './components/CoverPreview';
 import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './components/EditorControls';
 import RichTextToolbar from './components/RichTextToolbar';
-import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftLeftIcon, SwatchIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
+import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
+
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
+
+async function getEmbedFontCSS() {
+    try {
+        const res = await fetch(GOOGLE_FONTS_URL);
+        const css = await res.text();
+        
+        const urls: string[] = [];
+        css.replace(/url\(([^)]+)\)/g, (match, url) => {
+            urls.push(url.replace(/['"]/g, '').trim());
+            return match;
+        });
+
+        const uniqueUrls = [...new Set(urls)];
+        const fontMap = new Map<string, string>();
+
+        await Promise.all(uniqueUrls.map(async (url) => {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                await new Promise((resolve) => {
+                    reader.onloadend = () => resolve(null);
+                    reader.readAsDataURL(blob);
+                });
+                if (reader.result) {
+                    fontMap.set(url, reader.result as string);
+                }
+            } catch (e) {
+                console.warn('Failed to load font', url, e);
+            }
+        }));
+
+        let newCss = css;
+        fontMap.forEach((base64, url) => {
+            newCss = newCss.split(url).join(base64);
+        });
+        
+        return newCss;
+    } catch (e) {
+        console.error('Error embedding fonts', e);
+        return '';
+    }
+}
 
 const App: React.FC = () => {
   const [state, setState] = useState<CoverState>(() => {
@@ -75,7 +120,6 @@ const App: React.FC = () => {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const bgColorPaletteRef = useRef<HTMLDivElement>(null);
@@ -90,24 +134,6 @@ const App: React.FC = () => {
     localStorage.setItem('coverPresets_v3', JSON.stringify(presets));
   }, [presets]);
   
-  useEffect(() => {
-    if (!window.visualViewport) return;
-
-    const handleViewportChange = () => {
-      const vh = window.innerHeight;
-      const vvh = window.visualViewport!.height;
-      const offset = vh - vvh;
-      setKeyboardHeight(offset > 100 ? offset : 0);
-    };
-
-    window.visualViewport.addEventListener('resize', handleViewportChange);
-    window.visualViewport.addEventListener('scroll', handleViewportChange);
-    return () => {
-      window.visualViewport?.removeEventListener('resize', handleViewportChange);
-      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
-    };
-  }, []);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (
@@ -242,42 +268,53 @@ const App: React.FC = () => {
   };
 
   const handleExport = async (filename: string) => {
-    if (!previewRef.current || isExporting) return;
+    if (!previewRef.current) return;
     
     setIsExporting(true);
 
     try {
-      // 等待字体加载
       await document.fonts.ready;
-      // 降低像素比至3，减少内存压力
+      await new Promise(resolve => setTimeout(resolve, 200)); 
+
+      const fontCss = await getEmbedFontCSS();
+
       const exportOptions: any = {
-        pixelRatio: 3, 
+        cacheBust: true,
+        pixelRatio: 4, 
         backgroundColor: state.backgroundColor,
-        style: {
-           transform: 'scale(1)',
-           transformOrigin: 'top left',
-           margin: '0',
-           padding: '0',
-        }
+        fontEmbedCSS: fontCss,
       };
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
-        exportOptions.height = 533; 
+        // 禁止导出为 3:4 (400x533)，改为 400x500 (4:5)
+        exportOptions.height = 500; 
+        exportOptions.style = {
+           width: '400px',
+           height: '500px',
+           maxWidth: 'none',
+           maxHeight: 'none',
+           transform: 'none',
+           margin: '0',
+        };
       } else {
         exportOptions.width = 400;
+         exportOptions.style = {
+           width: '400px',
+           maxWidth: 'none',
+           transform: 'none',
+           margin: '0',
+        };
       }
 
       const dataUrl = await toPng(previewRef.current, exportOptions);
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = filename;
-      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("导出失败：当前页面内存占用过高或内容过于复杂，请尝试刷新页面后重试。");
+      alert("导出失败，请重试");
     } finally {
       setIsExporting(false);
     }
@@ -328,7 +365,7 @@ const App: React.FC = () => {
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
             <div 
                 ref={previewContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start"
+                className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start pb-10"
             >
                <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center items-center">
                   <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'center center' }}>
@@ -347,11 +384,7 @@ const App: React.FC = () => {
                 <div 
                     ref={bgColorPaletteRef}
                     className="fixed z-50 bottom-32 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
-                    style={{ 
-                        width: 'max-content', 
-                        maxWidth: '90vw',
-                        transform: `translateX(-50%) translateY(-${keyboardHeight}px)` 
-                    }}
+                    style={{ width: 'max-content', maxWidth: '90vw' }}
                 >
                     {PALETTE.map((color) => (
                         <button
@@ -368,10 +401,7 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div 
-                className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white transition-transform duration-300 ease-out"
-                style={{ transform: `translateY(-${keyboardHeight}px)` }}
-            >
+            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 
@@ -401,7 +431,6 @@ const App: React.FC = () => {
                         visible={true}
                         state={state}
                         onChange={handleStateChange}
-                        keyboardHeight={keyboardHeight}
                     />}
                 </div>
 

@@ -29,10 +29,10 @@ export const TEXT_PALETTE = [
   { name: 'Brown', value: '#5d4037', label: '褐土' },
 ];
 
-export const INITIAL_TITLE = "叠加态";
-export const INITIAL_SUBTITLE = "生与死共用一副咽喉，同吐一口气息";
+export const INITIAL_TITLE = "江湖就是要打打杀杀";
+export const INITIAL_SUBTITLE = "写TA如何打一场漂亮的架";
 export const INITIAL_BODY_TEXT = "";
-export const INITIAL_CATEGORY = "文稿、二象性鉴";
+export const INITIAL_CATEGORY = "文稿、短打";
 export const INITIAL_AUTHOR = "琉璃";
 
 export const INITIAL_BG_COLOR = PastelColor.Rose;
@@ -40,6 +40,15 @@ export const INITIAL_ACCENT_COLOR = PastelColor.Salmon;
 export const INITIAL_TEXT_COLOR = '#45597B';
 
 export const DEFAULT_PRESETS = [
+  {
+    id: 'preset_jianghu',
+    name: '江湖就是要打打杀杀',
+    title: "江湖就是要打打杀杀",
+    subtitle: "写TA如何打一场漂亮的架",
+    bodyText: "",
+    category: "文稿、短打",
+    author: "琉璃"
+  },
   {
     id: 'preset_duality',
     name: '叠加态',
@@ -66,15 +75,6 @@ export const DEFAULT_PRESETS = [
     subtitle: "泥土坦然接受了枝头无法挽留的事物",
     bodyText: "",
     category: "文稿、判词",
-    author: "琉璃"
-  },
-  {
-    id: 'preset_jianghu',
-    name: '江湖就是要打打杀杀',
-    title: "江湖就是要打打杀杀",
-    subtitle: "写TA如何打一场漂亮的架",
-    bodyText: "",
-    category: "文稿、短打",
     author: "琉璃"
   },
   {
