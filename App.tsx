@@ -20,51 +20,6 @@ import RichTextToolbar from './components/RichTextToolbar';
 import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftLeftIcon, SwatchIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
-const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
-
-async function getEmbedFontCSS() {
-    try {
-        const res = await fetch(GOOGLE_FONTS_URL);
-        const css = await res.text();
-        
-        const urls: string[] = [];
-        css.replace(/url\(([^)]+)\)/g, (match, url) => {
-            urls.push(url.replace(/['"]/g, '').trim());
-            return match;
-        });
-
-        const uniqueUrls = [...new Set(urls)];
-        const fontMap = new Map<string, string>();
-
-        await Promise.all(uniqueUrls.map(async (url) => {
-            try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                await new Promise((resolve) => {
-                    reader.onloadend = () => resolve(null);
-                    reader.readAsDataURL(blob);
-                });
-                if (reader.result) {
-                    fontMap.set(url, reader.result as string);
-                }
-            } catch (e) {
-                console.warn('Failed to load font', url, e);
-            }
-        }));
-
-        let newCss = css;
-        fontMap.forEach((base64, url) => {
-            newCss = newCss.split(url).join(base64);
-        });
-        
-        return newCss;
-    } catch (e) {
-        console.error('Error embedding fonts', e);
-        return '';
-    }
-}
-
 const App: React.FC = () => {
   const [state, setState] = useState<CoverState>(() => {
     try {
@@ -135,7 +90,6 @@ const App: React.FC = () => {
     localStorage.setItem('coverPresets_v3', JSON.stringify(presets));
   }, [presets]);
   
-  // 监听虚拟键盘高度
   useEffect(() => {
     if (!window.visualViewport) return;
 
@@ -143,7 +97,6 @@ const App: React.FC = () => {
       const vh = window.innerHeight;
       const vvh = window.visualViewport!.height;
       const offset = vh - vvh;
-      // 阈值判断，避免某些浏览器的工具栏微小变化触发
       setKeyboardHeight(offset > 100 ? offset : 0);
     };
 
@@ -220,14 +173,6 @@ const App: React.FC = () => {
     if (activePresetId === id) setActivePresetId(null);
   };
 
-  /**
-   * [禁止修改此逻辑 - CRITICAL]
-   * 切换草稿时必须执行“智能合并”策略，而非简单的完全覆盖：
-   * 1. 核心目标：绝对保护用户当前正在编辑的长文本内容不被丢失。
-   * 2. 行为准则：如果目标草稿（无论是默认草稿还是自定义草稿）的 bodyText 实际上是空的
-   *    （通过 DOM 文本内容深度校验），则必须强制保留编辑器当前的内容。
-   * 3. 只有当目标草稿包含有效的非空内容时，才允许替换当前内容。
-   */
   const handleLoadPreset = (preset: ContentPreset) => {
     setState(prev => {
       const isHtmlEffectivelyEmpty = (html: string | undefined): boolean => {
@@ -297,52 +242,42 @@ const App: React.FC = () => {
   };
 
   const handleExport = async (filename: string) => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || isExporting) return;
     
     setIsExporting(true);
 
     try {
+      // 等待字体加载
       await document.fonts.ready;
-      await new Promise(resolve => setTimeout(resolve, 200)); 
-
-      const fontCss = await getEmbedFontCSS();
-
+      // 降低像素比至3，减少内存压力
       const exportOptions: any = {
-        cacheBust: true,
-        pixelRatio: 4, 
+        pixelRatio: 3, 
         backgroundColor: state.backgroundColor,
-        fontEmbedCSS: fontCss,
+        style: {
+           transform: 'scale(1)',
+           transformOrigin: 'top left',
+           margin: '0',
+           padding: '0',
+        }
       };
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
         exportOptions.height = 533; 
-        exportOptions.style = {
-           width: '400px',
-           height: '533px',
-           maxWidth: 'none',
-           maxHeight: 'none',
-           transform: 'none',
-           margin: '0',
-        };
       } else {
         exportOptions.width = 400;
-         exportOptions.style = {
-           width: '400px',
-           maxWidth: 'none',
-           transform: 'none',
-           margin: '0',
-        };
       }
 
       const dataUrl = await toPng(previewRef.current, exportOptions);
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("导出失败，请重试");
+      alert("导出失败：当前页面内存占用过高或内容过于复杂，请尝试刷新页面后重试。");
     } finally {
       setIsExporting(false);
     }

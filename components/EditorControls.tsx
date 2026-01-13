@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CoverState, FontStyle, LayoutStyle, ContentPreset, EditorTab } from '../types';
 import { PALETTE, TEXT_PALETTE } from '../constants';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { 
     BookmarkIcon, 
     TrashIcon, 
@@ -43,34 +43,59 @@ export const MobileExportPanel: React.FC<EditorControlsProps> = ({ state, onExpo
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const analyzeCharacters = async () => {
-    if (!state.bodyText && !state.secondaryBodyText) return;
+  const analyzeCharacters = useCallback(async () => {
+    const cleanText = (html: string) => {
+        if (!html) return "";
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || "";
+    };
+
+    const fullText = `${cleanText(state.bodyText)} ${cleanText(state.secondaryBodyText)}`.trim();
+    if (!fullText || fullText.length < 5) return;
+
     setIsAnalyzing(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const fullText = `${state.bodyText} ${state.secondaryBodyText}`.replace(/<[^>]*>/g, ' ');
-      
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `请从以下文稿内容中提取出所有出现的人名、主角名或角色名。只返回名字，用逗号分隔。如果没有名字请返回“无”。文稿：${fullText}`,
+        contents: `你是一个专业的文学编辑。请从以下文稿中提取出主要人物的名字、角色名或称谓。只需返回名称，不要描述。
+        文稿内容："""${fullText}"""`,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    characterList: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "提取到的角色名称列表"
+                    }
+                },
+                required: ["characterList"]
+            }
+        }
       });
 
-      const text = response.text || '无';
-      const list = text.split(/[,，]/).map(name => name.trim()).filter(name => name && name !== '无');
+      const result = JSON.parse(response.text || '{"characterList":[]}');
+      const list = (result.characterList || [])
+        .map((name: string) => name.trim())
+        .filter((name: string) => name.length > 0 && name.length < 12);
+      
       const uniqueList = Array.from(new Set(list));
       setCharacters(uniqueList);
-      if (uniqueList.length > 0) setSelectedCharacters([uniqueList[0]]);
+      if (uniqueList.length > 0 && selectedCharacters.length === 0) {
+          setSelectedCharacters([uniqueList[0]]);
+      }
     } catch (error) {
       console.error("AI Analysis failed:", error);
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [state.bodyText, state.secondaryBodyText, selectedCharacters.length]);
 
-  // 挂载时自动执行 AI 识别
   useEffect(() => {
     analyzeCharacters();
-  }, []);
+  }, [analyzeCharacters]);
 
   const toggleCharacter = (char: string) => {
     setSelectedCharacters(prev => 
@@ -97,18 +122,26 @@ export const MobileExportPanel: React.FC<EditorControlsProps> = ({ state, onExpo
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
         <div>
           <div className="flex justify-between items-center mb-2">
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">识别文稿主角</h4>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                智能识别角色
+                <button 
+                    onClick={(e) => { e.stopPropagation(); analyzeCharacters(); }}
+                    disabled={isAnalyzing}
+                    className={`p-1 rounded-full transition-all hover:bg-gray-100 ${isAnalyzing ? 'animate-spin text-purple-500' : 'text-gray-400'}`}
+                >
+                    <ArrowPathIcon className="w-3 h-3" />
+                </button>
+            </h4>
             {isAnalyzing && (
               <div className="flex items-center gap-1 text-[9px] text-purple-600 font-bold animate-pulse">
-                <ArrowPathIcon className="w-2.5 h-2.5 animate-spin" />
-                正在智能识别...
+                <span>正在扫描内容...</span>
               </div>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-gray-50/50 rounded-xl border border-gray-100">
+          <div className="flex flex-wrap gap-1.5 min-h-[40px] p-2 bg-gray-50/50 rounded-xl border border-gray-100">
             {characters.length === 0 && !isAnalyzing ? (
-              <span className="text-[9px] text-gray-400 italic">未检测到角色名</span>
+              <span className="text-[9px] text-gray-400 italic w-full text-center py-2">文稿中未发现角色名</span>
             ) : characters.map(char => (
                 <button
                   key={char}
@@ -202,7 +235,9 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
             onClick={onCreateNew}
             className="shrink-0 w-28 h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 cursor-pointer hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 bg-gray-50/50"
           >
-             <PlusIcon className="w-6 h-6" />
+             <div className="bg-white p-2 rounded-full shadow-sm">
+                <PlusIcon className="w-6 h-6" />
+             </div>
              <span className="text-[10px] font-bold">新建草稿</span>
           </div>
 
@@ -266,7 +301,7 @@ export const MobileStylePanel: React.FC<EditorControlsProps> = ({ state, onChang
        </div>
        <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar">
           <div>
-             <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">布局模板</h4>
+             <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">布局模板</h4>
              <div className="grid grid-cols-4 gap-3">
               {[
                 { id: 'duality', label: '假作真时' },
@@ -280,7 +315,7 @@ export const MobileStylePanel: React.FC<EditorControlsProps> = ({ state, onChang
                   className={`shrink-0 h-20 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 ${state.layoutStyle === layout.id ? 'border-purple-500 bg-purple-50 text-purple-600 shadow-sm' : 'border-gray-200 bg-white text-gray-500'}`}
                 >
                   <div className={`w-8 h-8 rounded border-2 ${state.layoutStyle === layout.id ? 'border-purple-300 bg-purple-100' : 'border-gray-300 bg-gray-50'}`}></div>
-                  <span className="text-xs font-bold">{layout.label}</span>
+                  <span className="text-[10px] font-bold">{layout.label}</span>
                 </button>
               ))}
             </div>
@@ -312,7 +347,7 @@ export const ContentEditorModal: React.FC<{
              </button>
           </div>
           
-          <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
             <div>
               <label className="text-xs font-bold text-gray-500 mb-1.5 block uppercase">主标题</label>
               <textarea 
@@ -483,19 +518,19 @@ const EditorControls: React.FC<EditorControlsProps> = ({
   );
 
   const renderContentTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 h-full overflow-y-auto custom-scrollbar pr-1">
       <div className="space-y-4">
         <div className="flex items-center gap-2 opacity-60 px-1">
              <PencilSquareIcon className="w-4 h-4" />
              <span className="text-sm font-bold uppercase tracking-wider">文本内容</span>
         </div>
         
-        <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100">
-           提示：点击正文区域即可进行富文本编辑。选中文字可加粗、变斜或调整对齐方式。点击正文唤起工具栏可修改背景与文字颜色。
+        <div className="p-3 bg-blue-50 text-blue-700 text-[11px] rounded-lg border border-blue-100 leading-relaxed shadow-sm">
+           提示：点击预览区正文即可唤起富文本编辑与排版工具。
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">主标题</label>
+          <label className="text-xs font-bold text-gray-400 mb-1.5 block">主标题</label>
           <textarea 
             value={state.title}
             onChange={(e) => onChange({ title: e.target.value })}
@@ -506,7 +541,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1.5 block">副标题 / 文案</label>
+          <label className="text-xs font-bold text-gray-400 mb-1.5 block">副标题 / 文案</label>
           <textarea
             value={state.subtitle}
             onChange={(e) => onChange({ subtitle: e.target.value })}
@@ -517,12 +552,12 @@ const EditorControls: React.FC<EditorControlsProps> = ({
         </div>
         
         {state.layoutStyle === 'duality' && (
-          <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">正文（里象）</label>
+          <div className="animate-in fade-in slide-in-from-top-2">
+            <label className="text-xs font-bold text-purple-400 mb-1.5 block uppercase">正文（里象内容）</label>
             <textarea
               value={state.secondaryBodyText}
               onChange={(e) => onChange({ secondaryBodyText: e.target.value })}
-              className="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none font-sans-sc transition-all text-sm resize-none"
+              className="w-full px-3 py-3 bg-purple-50/30 border border-purple-100 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none font-sans-sc transition-all text-sm resize-none"
               rows={3}
               placeholder="仅在“假作真时”风格下显示"
             />
@@ -531,7 +566,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">分类标签</label>
+            <label className="text-xs font-bold text-gray-400 mb-1.5 block">分类标签</label>
             <input 
               type="text"
               value={state.category}
@@ -541,7 +576,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 mb-1.5 block">作者署名</label>
+            <label className="text-xs font-bold text-gray-400 mb-1.5 block">作者署名</label>
             <input 
               type="text"
               value={state.author}
@@ -558,26 +593,29 @@ const EditorControls: React.FC<EditorControlsProps> = ({
   const renderStyleTab = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <label className="text-sm font-bold text-gray-800">风格与布局</label>
+        <label className="text-sm font-bold text-gray-800 flex items-center gap-2">
+           <PaintBrushIcon className="w-4 h-4 text-purple-500" />
+           风格与布局方案
+        </label>
         
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { id: 'duality', label: '假作真时' },
-            { id: 'minimal', label: '机能档案' },
-            { id: 'split', label: '电影叙事' },
-            { id: 'centered', label: '杂志海报' }
+            { id: 'duality', label: '假作真时', desc: '二象性对比' },
+            { id: 'minimal', label: '机能档案', desc: '硬核数据风' },
+            { id: 'split', label: '电影叙事', desc: '胶片复古感' },
+            { id: 'centered', label: '杂志海报', desc: '经典简约' }
           ].map((layout) => (
             <button
               key={layout.id}
               onClick={() => onChange({ layoutStyle: layout.id as LayoutStyle })}
-              className={`py-2 px-1 rounded-lg border text-[10px] md:text-xs font-medium transition-all ${state.layoutStyle === layout.id ? 'border-gray-800 bg-gray-800 text-white shadow-md transform scale-[1.02]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+              className={`p-3 rounded-xl border flex flex-col gap-1 transition-all text-left active:scale-95 ${state.layoutStyle === layout.id ? 'border-purple-500 bg-purple-50 ring-1 ring-purple-100 shadow-sm' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
             >
-              {layout.label}
+              <span className={`font-bold text-sm ${state.layoutStyle === layout.id ? 'text-purple-700' : 'text-gray-800'}`}>{layout.label}</span>
+              <span className="text-[10px] opacity-60">{layout.desc}</span>
             </button>
           ))}
         </div>
       </div>
-      
     </div>
   );
 
@@ -600,8 +638,8 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       <div className="hidden md:block p-6 pb-2">
         <div className="flex justify-between items-center mb-1">
           <div>
-             <h2 className="text-2xl font-bold text-gray-900">衔书又止</h2>
-             <p className="text-gray-400 text-xs mt-1">衔书又止</p>
+             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">衔书又止</h2>
+             <p className="text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em] mt-1 opacity-70">Script Archive System</p>
           </div>
         </div>
       </div>
@@ -615,7 +653,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-28 relative custom-scrollbar">
-        <div className="space-y-6">
+        <div className="h-full">
           {activeTab === 'style' && renderStyleTab()}
           {activeTab === 'drafts' && renderDraftsTab()}
           {activeTab === 'content' && renderContentTab()}
