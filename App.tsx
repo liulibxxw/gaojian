@@ -17,7 +17,7 @@ import {
 import CoverPreview from './components/CoverPreview';
 import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './components/EditorControls';
 import RichTextToolbar from './components/RichTextToolbar';
-import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
+import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftLeftIcon, SwatchIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
@@ -199,17 +199,30 @@ const App: React.FC = () => {
     if (activePresetId === id) setActivePresetId(null);
   };
 
+  /**
+   * [禁止修改此逻辑 - CRITICAL]
+   * 切换草稿时必须执行“智能合并”策略，而非简单的完全覆盖：
+   * 1. 核心目标：绝对保护用户当前正在编辑的长文本内容不被丢失。
+   * 2. 行为准则：如果目标草稿（无论是默认草稿还是自定义草稿）的 bodyText 实际上是空的
+   *    （通过 DOM 文本内容深度校验），则必须强制保留编辑器当前的内容。
+   * 3. 只有当目标草稿包含有效的非空内容时，才允许替换当前内容。
+   */
   const handleLoadPreset = (preset: ContentPreset) => {
     setState(prev => {
+      // 内部辅助函数：判断 HTML 字符串是否在视觉上为空（排除 HTML 标签干扰）
       const isHtmlEffectivelyEmpty = (html: string | undefined): boolean => {
         if (!html || html.trim() === '') return true;
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
+        // 提取纯文本并剔除空白字符
         const text = tempDiv.textContent || tempDiv.innerText || "";
         return text.trim().length === 0;
       };
 
+      // 决定最终文本：若草稿文本无效则沿用当前文本，否则采用草稿文本
       const finalBodyText = isHtmlEffectivelyEmpty(preset.bodyText) ? prev.bodyText : preset.bodyText;
+      
+      // 同理处理里象文本（针对二象性布局）
       const finalSecondaryBodyText = isHtmlEffectivelyEmpty(preset.secondaryBodyText) 
         ? prev.secondaryBodyText 
         : (preset.secondaryBodyText || '');
@@ -287,11 +300,10 @@ const App: React.FC = () => {
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
-        // 禁止导出为 3:4 (400x533)，改为 400x500 (4:5)
-        exportOptions.height = 500; 
+        exportOptions.height = 533; 
         exportOptions.style = {
            width: '400px',
-           height: '500px',
+           height: '533px',
            maxWidth: 'none',
            maxHeight: 'none',
            transform: 'none',
@@ -365,7 +377,7 @@ const App: React.FC = () => {
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
             <div 
                 ref={previewContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start pb-10"
+                className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start"
             >
                <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center items-center">
                   <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'center center' }}>

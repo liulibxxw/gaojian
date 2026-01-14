@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { CoverState, FontStyle, LayoutStyle, ContentPreset, EditorTab } from '../types';
 import { PALETTE, TEXT_PALETTE } from '../constants';
-import { GoogleGenAI } from "@google/genai";
 import { 
     BookmarkIcon, 
     TrashIcon, 
@@ -16,7 +15,8 @@ import {
     ArrowDownTrayIcon,
     SparklesIcon,
     CheckCircleIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    UserIcon
 } from '@heroicons/react/24/solid';
 
 interface EditorControlsProps {
@@ -39,47 +39,10 @@ interface EditorControlsProps {
 }
 
 export const MobileExportPanel: React.FC<EditorControlsProps> = ({ state, onExport, isExporting }) => {
-  const [characters, setCharacters] = useState<string[]>([]);
-  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const analyzeCharacters = async () => {
-    if (!state.bodyText && !state.secondaryBodyText) return;
-    setIsAnalyzing(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const fullText = `${state.bodyText} ${state.secondaryBodyText}`.replace(/<[^>]*>/g, ' ');
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `请从以下文稿内容中提取出所有出现的人名、主角名或角色名。只返回名字，用逗号分隔。如果没有名字请返回“无”。文稿：${fullText}`,
-      });
-
-      const text = response.text || '无';
-      const list = text.split(/[,，]/).map(name => name.trim()).filter(name => name && name !== '无');
-      const uniqueList = Array.from(new Set(list));
-      setCharacters(uniqueList);
-      if (uniqueList.length > 0) setSelectedCharacters([uniqueList[0]]);
-    } catch (error) {
-      console.error("AI Analysis failed:", error);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // 挂载时自动执行 AI 识别
-  useEffect(() => {
-    analyzeCharacters();
-  }, []);
-
-  const toggleCharacter = (char: string) => {
-    setSelectedCharacters(prev => 
-      prev.includes(char) ? prev.filter(c => c !== char) : [...prev, char]
-    );
-  };
+  const [characterName, setCharacterName] = useState('');
 
   const prefix = state.mode === 'cover' ? '封面' : '长文';
-  const charSuffix = selectedCharacters.length > 0 ? selectedCharacters.join(',') : '无';
+  const charSuffix = characterName.trim() || '无';
   const filename = `${prefix}-${state.title || '未命名'}-${charSuffix}.png`;
 
   return (
@@ -97,33 +60,20 @@ export const MobileExportPanel: React.FC<EditorControlsProps> = ({ state, onExpo
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
         <div>
           <div className="flex justify-between items-center mb-2">
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">识别文稿主角</h4>
-            {isAnalyzing && (
-              <div className="flex items-center gap-1 text-[9px] text-purple-600 font-bold animate-pulse">
-                <ArrowPathIcon className="w-2.5 h-2.5 animate-spin" />
-                正在智能识别...
-              </div>
-            )}
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <UserIcon className="w-2.5 h-2.5" />
+                填写主角/角色名
+            </h4>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-gray-50/50 rounded-xl border border-gray-100">
-            {characters.length === 0 && !isAnalyzing ? (
-              <span className="text-[9px] text-gray-400 italic">未检测到角色名</span>
-            ) : characters.map(char => (
-                <button
-                  key={char}
-                  onClick={() => toggleCharacter(char)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
-                    selectedCharacters.includes(char) 
-                    ? 'bg-purple-50 border-purple-200 text-purple-600 shadow-sm' 
-                    : 'bg-white border-gray-200 text-gray-500'
-                  }`}
-                >
-                  {char}
-                  {selectedCharacters.includes(char) && <CheckCircleIcon className="w-3 h-3" />}
-                </button>
-              ))
-            }
+          <div className="relative">
+            <input 
+              type="text"
+              value={characterName}
+              onChange={(e) => setCharacterName(e.target.value)}
+              placeholder="输入姓名，将包含在文件名中..."
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none text-xs font-bold transition-all"
+            />
           </div>
         </div>
 
