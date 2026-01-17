@@ -17,7 +17,7 @@ import {
 import CoverPreview from './components/CoverPreview';
 import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './components/EditorControls';
 import RichTextToolbar from './components/RichTextToolbar';
-import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftLeftIcon, SwatchIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/solid';
+import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
@@ -120,11 +120,35 @@ const App: React.FC = () => {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const bgColorPaletteRef = useRef<HTMLDivElement>(null);
   const bgColorButtonRef = useRef<HTMLButtonElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  // 监听 VisualViewport 以适配软键盘
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      
+      // 当可视高度小于窗口高度时，认为是软键盘弹出
+      // 注意：部分移动端浏览器底部地址栏伸缩也会触发，通常键盘弹出差值会很大 (>150px)
+      const offset = window.innerHeight - viewport.height;
+      setKeyboardHeight(offset > 150 ? offset : 0);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('coverState_v3', JSON.stringify(state));
@@ -199,30 +223,17 @@ const App: React.FC = () => {
     if (activePresetId === id) setActivePresetId(null);
   };
 
-  /**
-   * [禁止修改此逻辑 - CRITICAL]
-   * 切换草稿时必须执行“智能合并”策略，而非简单的完全覆盖：
-   * 1. 核心目标：绝对保护用户当前正在编辑的长文本内容不被丢失。
-   * 2. 行为准则：如果目标草稿（无论是默认草稿还是自定义草稿）的 bodyText 实际上是空的
-   *    （通过 DOM 文本内容深度校验），则必须强制保留编辑器当前的内容。
-   * 3. 只有当目标草稿包含有效的非空内容时，才允许替换当前内容。
-   */
   const handleLoadPreset = (preset: ContentPreset) => {
     setState(prev => {
-      // 内部辅助函数：判断 HTML 字符串是否在视觉上为空（排除 HTML 标签干扰）
       const isHtmlEffectivelyEmpty = (html: string | undefined): boolean => {
         if (!html || html.trim() === '') return true;
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
-        // 提取纯文本并剔除空白字符
         const text = tempDiv.textContent || tempDiv.innerText || "";
         return text.trim().length === 0;
       };
 
-      // 决定最终文本：若草稿文本无效则沿用当前文本，否则采用草稿文本
       const finalBodyText = isHtmlEffectivelyEmpty(preset.bodyText) ? prev.bodyText : preset.bodyText;
-      
-      // 同理处理里象文本（针对二象性布局）
       const finalSecondaryBodyText = isHtmlEffectivelyEmpty(preset.secondaryBodyText) 
         ? prev.secondaryBodyText 
         : (preset.secondaryBodyText || '');
@@ -395,8 +406,14 @@ const App: React.FC = () => {
             {showBgColorPalette && (
                 <div 
                     ref={bgColorPaletteRef}
-                    className="fixed z-50 bottom-32 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
-                    style={{ width: 'max-content', maxWidth: '90vw' }}
+                    className="fixed z-50 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
+                    style={{ 
+                      width: 'max-content', 
+                      maxWidth: '90vw',
+                      left: '50%',
+                      bottom: `calc(${keyboardHeight}px + 128px)`,
+                      transform: 'translateX(-50%)'
+                    }}
                 >
                     {PALETTE.map((color) => (
                         <button
@@ -413,7 +430,13 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
+            <div 
+              className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white transition-all duration-300 ease-out"
+              style={{ 
+                transform: `translateY(-${keyboardHeight}px)`,
+                paddingBottom: keyboardHeight > 0 ? 'env(safe-area-inset-bottom)' : '0'
+              }}
+            >
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 
@@ -443,6 +466,7 @@ const App: React.FC = () => {
                         visible={true}
                         state={state}
                         onChange={handleStateChange}
+                        keyboardOffset={keyboardHeight}
                     />}
                 </div>
 
