@@ -1,16 +1,15 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   BoldIcon, 
   ItalicIcon, 
   Bars3BottomLeftIcon, 
-  Bars3BottomRightIcon,
-  Bars3Icon,
-  PencilIcon,
-  AdjustmentsHorizontalIcon,
-  MinusIcon,
-  PlusIcon,
-  MagnifyingGlassIcon,
+  Bars3BottomRightIcon, 
+  Bars3Icon, 
+  PencilIcon, 
+  AdjustmentsHorizontalIcon, 
+  MinusIcon, 
+  PlusIcon, 
+  MagnifyingGlassIcon, 
   CheckIcon,
   ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
@@ -34,9 +33,11 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   const [palettePosition, setPalettePosition] = useState<{left: number, bottom: number} | null>(null);
   const [batchFontSize, setBatchFontSize] = useState(13);
 
+  // 分段对齐相关状态
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [rowEditData, setRowEditData] = useState({ left: '', center: '', right: '' });
 
+  // 状态检测：包含对齐方式
   const [formatStates, setFormatStates] = useState({
     bold: false,
     italic: false,
@@ -82,6 +83,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
     });
   }, [allParagraphs, searchChar, isRegexMode]);
 
+  // 监听选区变化以更新加粗、斜体、对齐状态
   useEffect(() => {
     const updateFormatStates = () => {
       if (!visible) return;
@@ -133,6 +135,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
+    // 操作后立即刷新一次状态显示
     setTimeout(() => {
       setFormatStates({
         bold: document.queryCommandState('bold'),
@@ -235,6 +238,7 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
       }
   };
 
+  // 分段对齐辅助功能
   const assignSelection = (field: 'left' | 'center' | 'right') => {
     const selection = window.getSelection();
     if (selection && selection.toString()) {
@@ -281,12 +285,9 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
   const calculatePalettePosition = (target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
       const screenW = window.innerWidth;
-      const screenH = window.innerHeight;
       const PALETTE_WIDTH = 280; 
       const PADDING = 10;
-      
-      const bottom = screenH - rect.top + 10 + keyboardOffset; 
-      
+      const bottom = window.innerHeight - rect.top + 10; 
       let left = rect.left + rect.width / 2;
       const minLeft = PALETTE_WIDTH / 2 + PADDING;
       const maxLeft = screenW - PALETTE_WIDTH / 2 - PADDING;
@@ -506,7 +507,6 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ visible, state, onCha
                                                 onClick={() => handleBatchFontSizeChange(Math.max(10, batchFontSize - 1))}
                                                 className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-gray-100 rounded-full transition-colors active:scale-90"
                                             >
-                                                {/* Corrected component name from '恐怖Icon' to 'MinusIcon' */}
                                                 <MinusIcon className="w-4 h-4" />
                                             </button>
                                             

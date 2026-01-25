@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { CoverState, FontStyle, LayoutStyle, ContentPreset, EditorTab } from '../types';
 import { PALETTE, TEXT_PALETTE } from '../constants';
 import { 
@@ -13,10 +14,7 @@ import {
     AdjustmentsHorizontalIcon,
     SwatchIcon,
     ArrowDownTrayIcon,
-    SparklesIcon,
-    CheckCircleIcon,
-    ArrowPathIcon,
-    UserIcon
+    ArrowPathIcon
 } from '@heroicons/react/24/solid';
 
 interface EditorControlsProps {
@@ -27,7 +25,7 @@ interface EditorControlsProps {
   onDeletePreset?: (id: string) => void;
   onRenamePreset?: (id: string, newName: string) => void;
   onLoadPreset?: (preset: ContentPreset) => void;
-  onExport: (filename: string) => void;
+  onExport: (filename?: string) => void;
   activeTab?: EditorTab;
   onTabChange?: (tab: EditorTab) => void;
   onClose?: () => void; 
@@ -37,69 +35,6 @@ interface EditorControlsProps {
   onCreateNew?: () => void;
   isExporting?: boolean;
 }
-
-export const MobileExportPanel: React.FC<EditorControlsProps> = ({ state, onExport, isExporting }) => {
-  const [characterName, setCharacterName] = useState('');
-
-  const prefix = state.mode === 'cover' ? '封面' : '长文';
-  const charSuffix = characterName.trim() || '无';
-  const filename = `${prefix}-${state.title || '未命名'}-${charSuffix}.png`;
-
-  return (
-    <div className="w-full h-44 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl flex flex-col pointer-events-auto animate-in slide-in-from-bottom-5">
-      <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center shrink-0">
-        <span className="text-xs font-bold text-gray-500 flex items-center gap-2">
-          <ArrowDownTrayIcon className="w-3.5 h-3.5 text-purple-600" />
-          导出设置
-        </span>
-        <div className="text-[9px] font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded max-w-[150px] truncate">
-          {filename}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                <UserIcon className="w-2.5 h-2.5" />
-                填写主角/角色名
-            </h4>
-          </div>
-
-          <div className="relative">
-            <input 
-              type="text"
-              value={characterName}
-              onChange={(e) => setCharacterName(e.target.value)}
-              placeholder="输入姓名，将包含在文件名中..."
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-100 focus:border-purple-300 outline-none text-xs font-bold transition-all"
-            />
-          </div>
-        </div>
-
-        <button 
-          onClick={() => onExport(filename)}
-          disabled={isExporting}
-          className={`w-full py-3 rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 ${
-            isExporting ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-gray-900 text-white hover:bg-black'
-          }`}
-        >
-          {isExporting ? (
-            <>
-              <ArrowPathIcon className="w-4 h-4 animate-spin" />
-              <span>高清渲染中...</span>
-            </>
-          ) : (
-            <>
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              <span>保存到相册</span>
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-};
 
 export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
   presets = [],
@@ -128,7 +63,7 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
   };
 
   return (
-    <div className="w-full h-44 bg-white/90 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col pointer-events-auto">
+    <div className="w-full h-40 bg-white/90 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col pointer-events-auto">
        <div className="px-4 py-2 flex justify-between items-center border-b border-gray-100 shrink-0 h-10">
           <span className="text-xs font-bold text-gray-500">我的草稿 ({presets.length})</span>
           {isSaving && (
@@ -150,7 +85,7 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
        <div className="flex-1 overflow-x-auto overflow-y-hidden flex items-center gap-3 px-4 py-2 custom-scrollbar">
           <div 
             onClick={onCreateNew}
-            className="shrink-0 w-28 h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 cursor-pointer hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 bg-gray-50/50"
+            className="shrink-0 w-28 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-400 cursor-pointer hover:border-purple-500 hover:text-purple-500 hover:bg-purple-50 transition-all active:scale-95 bg-gray-50/50"
           >
              <PlusIcon className="w-6 h-6" />
              <span className="text-[10px] font-bold">新建草稿</span>
@@ -168,7 +103,7 @@ export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
                     if (onLoadPreset) onLoadPreset(preset);
                   }
                 }}
-                className={`relative shrink-0 w-28 h-28 bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden transition-all duration-200 ${isActive ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`relative shrink-0 w-28 h-24 bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden transition-all duration-200 ${isActive ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 hover:border-gray-300'}`}
               >
                  <div className={`absolute top-0 left-0 h-full w-1 ${getPresetColor(idx)}`}></div>
                  <div className="p-2 pl-3 flex flex-col h-full">
@@ -235,6 +170,59 @@ export const MobileStylePanel: React.FC<EditorControlsProps> = ({ state, onChang
               ))}
             </div>
           </div>
+       </div>
+    </div>
+  );
+};
+
+export const MobileExportPanel: React.FC<EditorControlsProps> = ({ state, onExport, isExporting }) => {
+  const [characterName, setCharacterName] = useState('');
+  
+  const prefix = state.mode === 'cover' ? '封面' : '长文';
+  const title = (state.title || '无标题').replace(/[\\/:*?"<>|]/g, '');
+  const safeCharName = characterName.trim().replace(/[\\/:*?"<>|]/g, '');
+  const filename = `${prefix}-${title}${safeCharName ? `-${safeCharName}` : ''}`;
+  
+  return (
+    <div className="w-full h-44 bg-white/90 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col pointer-events-auto">
+       <div className="px-4 py-2 flex items-center border-b border-gray-100 shrink-0 h-10">
+          <span className="text-xs font-bold text-gray-500">导出设置</span>
+       </div>
+       <div className="p-4 flex flex-col gap-3">
+         <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-gray-500 shrink-0 w-12">角色名</label>
+                <input 
+                  value={characterName}
+                  onChange={(e) => setCharacterName(e.target.value)}
+                  className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-purple-300 transition-all"
+                  placeholder="填写角色名"
+                />
+            </div>
+            <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-gray-500 shrink-0 w-12">文件名</label>
+                <div className="flex-1 px-3 py-1.5 bg-gray-100 border border-transparent rounded-lg text-xs text-gray-500 font-mono truncate">
+                    {filename}.png
+                </div>
+            </div>
+         </div>
+         <button 
+           onClick={() => onExport && onExport(`${filename}.png`)}
+           disabled={isExporting}
+           className="w-full py-2 bg-gray-900 text-white rounded-lg font-bold text-xs shadow-md active:scale-95 transition-all disabled:opacity-70 flex justify-center items-center gap-2"
+         >
+           {isExporting ? (
+             <>
+               <ArrowPathIcon className="w-3 h-3 animate-spin" />
+               生成中...
+             </>
+           ) : (
+             <>
+               <ArrowDownTrayIcon className="w-3 h-3" />
+               确认导出
+             </>
+           )}
+         </button>
        </div>
     </div>
   );
@@ -346,10 +334,13 @@ const EditorControls: React.FC<EditorControlsProps> = ({
   onLoadPreset,
   activeTab,
   onTabChange,
-  mobileView
+  mobileView,
+  onExport,
+  isExporting
 }) => {
   const [isSavingPreset, setIsSavingPreset] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
+  const [characterName, setCharacterName] = useState('');
   
   const startSavePreset = () => {
     setPresetNameInput(state.title || '无标题草稿');
@@ -505,31 +496,70 @@ const EditorControls: React.FC<EditorControlsProps> = ({
     </div>
   );
 
-  const renderStyleTab = () => (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <label className="text-sm font-bold text-gray-800">风格与布局</label>
+  const renderStyleTab = () => {
+    const prefix = state.mode === 'cover' ? '封面' : '长文';
+    const title = (state.title || '无标题').replace(/[\\/:*?"<>|]/g, '');
+    const safeCharName = characterName.trim().replace(/[\\/:*?"<>|]/g, '');
+    const filename = `${prefix}-${title}${safeCharName ? `-${safeCharName}` : ''}`;
+
+    return (
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <label className="text-sm font-bold text-gray-800">风格与布局</label>
+          
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { id: 'duality', label: '假作真时' },
+              { id: 'minimal', label: '机能档案' },
+              { id: 'split', label: '电影叙事' },
+              { id: 'centered', label: '杂志海报' }
+            ].map((layout) => (
+              <button
+                key={layout.id}
+                onClick={() => onChange({ layoutStyle: layout.id as LayoutStyle })}
+                className={`py-2 px-1 rounded-lg border text-[10px] md:text-xs font-medium transition-all ${state.layoutStyle === layout.id ? 'border-gray-800 bg-gray-800 text-white shadow-md transform scale-[1.02]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+              >
+                {layout.label}
+              </button>
+            ))}
+          </div>
+        </div>
         
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { id: 'duality', label: '假作真时' },
-            { id: 'minimal', label: '机能档案' },
-            { id: 'split', label: '电影叙事' },
-            { id: 'centered', label: '杂志海报' }
-          ].map((layout) => (
-            <button
-              key={layout.id}
-              onClick={() => onChange({ layoutStyle: layout.id as LayoutStyle })}
-              className={`py-2 px-1 rounded-lg border text-[10px] md:text-xs font-medium transition-all ${state.layoutStyle === layout.id ? 'border-gray-800 bg-gray-800 text-white shadow-md transform scale-[1.02]' : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
-            >
-              {layout.label}
-            </button>
-          ))}
+        <div className="pt-4 border-t border-gray-100 space-y-3">
+             <div className="space-y-2">
+                 <label className="text-xs font-bold text-gray-500 block">导出设置 (角色名)</label>
+                 <input 
+                    value={characterName}
+                    onChange={(e) => setCharacterName(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-purple-300 transition-all"
+                    placeholder="角色名 (可选)"
+                 />
+                 <div className="text-[10px] text-gray-400 font-mono px-1 truncate">
+                    {filename}.png
+                 </div>
+            </div>
+
+             <button 
+               onClick={() => onExport && onExport(`${filename}.png`)}
+               disabled={isExporting}
+               className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm shadow-md hover:bg-black transition-all flex justify-center items-center gap-2 disabled:opacity-70 active:scale-95"
+             >
+               {isExporting ? (
+                 <>
+                   <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                   生成中...
+                 </>
+               ) : (
+                 <>
+                   <ArrowDownTrayIcon className="w-4 h-4" />
+                   导出图片
+                 </>
+               )}
+             </button>
         </div>
       </div>
-      
-    </div>
-  );
+    );
+  };
 
   const TabButton = ({ isActive, onClick, icon: Icon, label }: { isActive: boolean, onClick: () => void, icon: React.FC<any>, label: string }) => (
     <button

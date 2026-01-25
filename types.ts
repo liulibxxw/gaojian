@@ -1,4 +1,5 @@
 
+
 export interface CoverState {
   title: string;
   subtitle: string;
@@ -32,5 +33,4 @@ export interface ContentPreset {
 
 export type FontStyle = CoverState['titleFont'];
 export type LayoutStyle = CoverState['layoutStyle'];
-
 export type EditorTab = 'style' | 'drafts' | 'content' | 'export';

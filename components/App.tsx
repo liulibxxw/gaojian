@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { CoverState, ContentPreset, EditorTab } from '../types';
 import { 
@@ -16,8 +15,8 @@ import {
 } from '../constants';
 import CoverPreview from './CoverPreview';
 import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './EditorControls';
-import RichTextToolbar from './RichTextToolbar';
 import ExportModal from './ExportModal';
+import RichTextToolbar from './RichTextToolbar';
 import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
@@ -110,7 +109,6 @@ const App: React.FC = () => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportImage, setExportImage] = useState<string | null>(null);
-  const [exportFilename, setExportFilename] = useState('cover.png');
   const [presets, setPresets] = useState<ContentPreset[]>(() => {
     try {
       const saved = localStorage.getItem('coverPresets_v3');
@@ -224,30 +222,15 @@ const App: React.FC = () => {
   };
 
   const handleLoadPreset = (preset: ContentPreset) => {
-    setState(prev => {
-      const isHtmlEffectivelyEmpty = (html: string | undefined): boolean => {
-        if (!html || html.trim() === '') return true;
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const text = tempDiv.textContent || tempDiv.innerText || "";
-        return text.trim().length === 0;
-      };
-
-      const finalBodyText = isHtmlEffectivelyEmpty(preset.bodyText) ? prev.bodyText : preset.bodyText;
-      const finalSecondaryBodyText = isHtmlEffectivelyEmpty(preset.secondaryBodyText) 
-        ? prev.secondaryBodyText 
-        : (preset.secondaryBodyText || '');
-
-      return {
-        ...prev,
-        title: preset.title,
-        subtitle: preset.subtitle,
-        bodyText: finalBodyText,
-        secondaryBodyText: finalSecondaryBodyText,
-        category: preset.category,
-        author: preset.author
-      };
-    });
+    setState(prev => ({
+      ...prev,
+      title: preset.title,
+      subtitle: preset.subtitle,
+      bodyText: preset.bodyText || prev.bodyText,
+      secondaryBodyText: preset.secondaryBodyText || prev.secondaryBodyText || '',
+      category: preset.category,
+      author: preset.author
+    }));
     setActivePresetId(preset.id);
   };
 
@@ -273,6 +256,7 @@ const App: React.FC = () => {
       setActivePresetId(newId);
       setIsCreatingNew(false);
     } else if (activePresetId) {
+      // 核心修复：如果是编辑已有草稿，同步更新草稿列表中的分类及其他信息
       setPresets(prev => prev.map(p => 
         p.id === activePresetId 
           ? { 
@@ -291,17 +275,16 @@ const App: React.FC = () => {
     setShowContentModal(false);
   };
 
-  const handleExport = async (filename: string) => {
+  const handleExport = async () => {
     if (!previewRef.current) return;
     
-    setExportFilename(filename);
     setIsExporting(true);
-    setShowExportModal(true);
     setExportImage(null);
+    setShowExportModal(true);
 
     try {
       await document.fonts.ready;
-      await new Promise(resolve => setTimeout(resolve, 300)); 
+      await new Promise(resolve => setTimeout(resolve, 200)); 
 
       const fontCss = await getEmbedFontCSS();
 
@@ -334,6 +317,7 @@ const App: React.FC = () => {
       }
 
       const dataUrl = await toPng(previewRef.current, exportOptions);
+
       setExportImage(dataUrl);
     } catch (error) {
       console.error("Export failed:", error);
@@ -348,7 +332,7 @@ const App: React.FC = () => {
     if (!exportImage) return;
     const link = document.createElement('a');
     link.href = exportImage;
-    link.download = exportFilename;
+    link.download = `cover-${Date.now()}.png`;
     link.click();
   };
 
@@ -371,11 +355,17 @@ const App: React.FC = () => {
     setShowBgColorPalette(false);
     handleStateChange({ mode: state.mode === 'cover' ? 'long-text' : 'cover' });
   };
+  
+  const handleExportClick = () => {
+      setActiveTab(undefined);
+      setShowBgColorPalette(false);
+      handleExport();
+  };
 
   return (
     <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full supports-[height:100dvh]:h-[100dvh] bg-gray-50 overflow-hidden text-gray-800">
       
-      <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)] shrink-0 h-full overflow-hidden">
+      <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
         <EditorControls 
           state={state} 
           onChange={handleStateChange}
@@ -386,6 +376,7 @@ const App: React.FC = () => {
           onExport={handleExport}
           activeTab={activeTab || 'style'} 
           onTabChange={(t) => setActiveTab(t)}
+          isExporting={isExporting}
         />
       </div>
 
@@ -415,14 +406,8 @@ const App: React.FC = () => {
             {showBgColorPalette && (
                 <div 
                     ref={bgColorPaletteRef}
-                    className="fixed z-50 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
-                    style={{ 
-                      width: 'max-content', 
-                      maxWidth: '90vw',
-                      left: '50%',
-                      bottom: `calc(${keyboardHeight}px + 128px)`,
-                      transform: 'translateX(-50%)'
-                    }}
+                    className="fixed z-50 bottom-32 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
+                    style={{ width: 'max-content', maxWidth: '90vw' }}
                 >
                     {PALETTE.map((color) => (
                         <button
@@ -439,13 +424,7 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div 
-              className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white transition-all duration-300 ease-out"
-              style={{ 
-                transform: `translateY(-${keyboardHeight}px)`,
-                paddingBottom: keyboardHeight > 0 ? 'env(safe-area-inset-bottom)' : '0'
-              }}
-            >
+            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 
@@ -475,7 +454,6 @@ const App: React.FC = () => {
                         visible={true}
                         state={state}
                         onChange={handleStateChange}
-                        keyboardOffset={keyboardHeight}
                     />}
                 </div>
 
@@ -509,7 +487,7 @@ const App: React.FC = () => {
                 </div>
             </div>
         </div>
-        
+
         {showExportModal && (
           <ExportModal 
             imageUrl={exportImage} 
