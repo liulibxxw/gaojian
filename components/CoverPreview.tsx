@@ -150,8 +150,7 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   
   const getBodyClasses = () => {
       // 这里的 bodyTextAlign 仅作为默认回退。具体的段落对齐将由内容中的内联样式决定。
-      // 添加 [&_p]:my-0 [&_div]:my-0 以修复某些浏览器中contentEditable产生的额外行间距问题
-      return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()} transition-all duration-300 [&_*]:text-inherit whitespace-pre-wrap break-words [&_p]:my-0 [&_p]:min-h-[1em] [&_div]:my-0 [&_div]:min-h-[1em]`;
+      return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()} transition-all duration-300 [&_*]:text-inherit`;
   };
 
   const renderTechDecorations = () => (

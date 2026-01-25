@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { CoverState, ContentPreset, EditorTab } from './types';
+import { CoverState, ContentPreset, EditorTab } from '../types';
 import { 
   INITIAL_TITLE, 
   INITIAL_SUBTITLE, 
@@ -13,11 +13,11 @@ import {
   DEFAULT_PRESETS,
   PastelColor,
   INITIAL_CATEGORY
-} from './constants';
-import CoverPreview from './components/CoverPreview';
-import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './components/EditorControls';
-import RichTextToolbar from './components/RichTextToolbar';
-import ExportModal from './components/ExportModal';
+} from '../constants';
+import CoverPreview from './CoverPreview';
+import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './EditorControls';
+import RichTextToolbar from './RichTextToolbar';
+import ExportModal from './ExportModal';
 import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
@@ -131,14 +131,12 @@ const App: React.FC = () => {
   const bgColorButtonRef = useRef<HTMLButtonElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
 
-  // 监听 VisualViewport 以适配软键盘
   useEffect(() => {
     if (!window.visualViewport) return;
 
     const handleViewportChange = () => {
       const viewport = window.visualViewport;
       if (!viewport) return;
-      
       const offset = window.innerHeight - viewport.height;
       setKeyboardHeight(offset > 150 ? offset : 0);
     };
@@ -314,7 +312,6 @@ const App: React.FC = () => {
         fontEmbedCSS: fontCss,
       };
 
-      // Set explicit dimensions for 3:4 aspect ratio (400x533)
       if (state.mode === 'cover') {
         exportOptions.width = 400;
         exportOptions.height = 533; 
@@ -512,7 +509,7 @@ const App: React.FC = () => {
                 </div>
             </div>
         </div>
-
+        
         {showExportModal && (
           <ExportModal 
             imageUrl={exportImage} 

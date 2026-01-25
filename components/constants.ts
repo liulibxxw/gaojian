@@ -29,10 +29,10 @@ export const TEXT_PALETTE = [
   { name: 'Brown', value: '#5d4037', label: '褐土' },
 ];
 
-export const INITIAL_TITLE = "加急投递";
-export const INITIAL_SUBTITLE = "好像不说清楚我是谁、你是什么，第二天太阳就不会升起来";
+export const INITIAL_TITLE = "江湖就是要打打杀杀";
+export const INITIAL_SUBTITLE = "写TA";
 export const INITIAL_BODY_TEXT = "";
-export const INITIAL_CATEGORY = "文稿、常稿";
+export const INITIAL_CATEGORY = "文稿创作";
 export const INITIAL_AUTHOR = "琉璃";
 
 export const INITIAL_BG_COLOR = PastelColor.Rose;
@@ -41,12 +41,12 @@ export const INITIAL_TEXT_COLOR = '#45597B';
 
 export const DEFAULT_PRESETS = [
   {
-    id: 'preset_3',
-    name: '加急投递',
-    title: "加急投递",
-    subtitle: "好像不说清楚我是谁、你是什么，第二天太阳就不会升起来",
+    id: 'preset_jianghu',
+    name: '江湖就是要打打杀杀',
+    title: "江湖就是要打打杀杀",
+    subtitle: "写TA",
     bodyText: "",
-    category: "文稿、常稿",
+    category: "文稿、短打",
     author: "琉璃"
   },
   {
@@ -78,15 +78,6 @@ export const DEFAULT_PRESETS = [
     author: "琉璃"
   },
   {
-    id: 'preset_jianghu',
-    name: '江湖就是要打打杀杀',
-    title: "江湖就是要打打杀杀",
-    subtitle: "写TA如何打一场漂亮的架",
-    bodyText: "",
-    category: "文稿、短打",
-    author: "琉璃"
-  },
-  {
     id: 'preset_1',
     name: '未命名事件簿',
     title: "未命名事件簿",
@@ -102,6 +93,15 @@ export const DEFAULT_PRESETS = [
     subtitle: "此时此刻，它只属于运气好的人",
     bodyText: "",
     category: "文稿、游戏掉落鉴",
+    author: "琉璃"
+  },
+  {
+    id: 'preset_3',
+    name: '加急投递',
+    title: "加急投递",
+    subtitle: "好像不说清楚我是谁、你是什么，第二天太阳就不会升起来",
+    bodyText: "",
+    category: "文稿、常稿",
     author: "琉璃"
   }
 ];
