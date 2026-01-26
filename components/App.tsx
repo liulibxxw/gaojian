@@ -122,7 +122,7 @@ const App: React.FC = () => {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState<string>('100%');
 
   const previewRef = useRef<HTMLDivElement>(null);
   const bgColorPaletteRef = useRef<HTMLDivElement>(null);
@@ -132,19 +132,20 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!window.visualViewport) return;
 
-    const handleViewportChange = () => {
-      const viewport = window.visualViewport;
-      if (!viewport) return;
-      const offset = window.innerHeight - viewport.height;
-      setKeyboardHeight(offset > 150 ? offset : 0);
+    const handleResize = () => {
+        if (!window.visualViewport) return;
+        setViewportHeight(`${window.visualViewport.height}px`);
     };
 
-    window.visualViewport.addEventListener('resize', handleViewportChange);
-    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
     
+    // Initial calculation
+    handleResize();
+
     return () => {
-      window.visualViewport?.removeEventListener('resize', handleViewportChange);
-      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
     };
   }, []);
 
@@ -363,8 +364,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full supports-[height:100dvh]:h-[100dvh] bg-gray-50 overflow-hidden text-gray-800">
-      
+    <div 
+        className="flex flex-col lg:flex-row fixed inset-0 w-full bg-gray-50 overflow-hidden text-gray-800"
+        style={{ height: viewportHeight }}
+    >
       <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
         <EditorControls 
           state={state} 
