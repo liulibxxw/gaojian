@@ -1,3 +1,8 @@
 name = "xianshuyouzhi"
-compatibility_date = "2024-11-12"
-pages_build_output_dir = "dist"
+compatibility_date = "2025-01-01"
+
+# Cloudflare Pages 配置
+pages_build_output_dir = "."
+
+# 如果你现在不打算用 Functions
+# functions = "functions"
