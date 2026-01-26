@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { CoverState, ContentPreset } from './types';
+import { CoverState, ContentPreset, EditorTab } from '../types';
 import { 
   INITIAL_TITLE, 
   INITIAL_SUBTITLE, 
@@ -13,11 +13,11 @@ import {
   DEFAULT_PRESETS,
   PastelColor,
   INITIAL_CATEGORY
-} from './constants';
-import CoverPreview from './components/CoverPreview';
-import EditorControls, { EditorTab, MobileDraftsStrip, MobileStylePanel, ContentEditorModal } from './components/EditorControls';
-import ExportModal from './components/ExportModal';
-import RichTextToolbar from './components/RichTextToolbar';
+} from '../constants';
+import CoverPreview from './CoverPreview';
+import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './EditorControls';
+import ExportModal from './ExportModal';
+import RichTextToolbar from './RichTextToolbar';
 import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
@@ -29,7 +29,6 @@ async function getEmbedFontCSS() {
         const css = await res.text();
         
         const urls: string[] = [];
-        // Extract URLs
         css.replace(/url\(([^)]+)\)/g, (match, url) => {
             urls.push(url.replace(/['"]/g, '').trim());
             return match;
@@ -80,7 +79,7 @@ const App: React.FC = () => {
            textColor: parsed.textColor || INITIAL_TEXT_COLOR,
            titleFont: parsed.titleFont || 'serif',
            secondaryBodyText: parsed.secondaryBodyText || '',
-           layoutStyle: parsed.layoutStyle || 'duality'
+           layoutStyle: parsed.layoutStyle || 'minimal'
         };
       }
     } catch (e) {
@@ -98,7 +97,7 @@ const App: React.FC = () => {
       textColor: INITIAL_TEXT_COLOR,
       titleFont: 'serif',
       bodyFont: 'serif',
-      layoutStyle: 'duality',
+      layoutStyle: 'minimal',
       mode: 'cover',
       bodyTextSize: 'text-[13px]',
       bodyTextAlign: 'text-justify',
@@ -120,15 +119,35 @@ const App: React.FC = () => {
     }
   });
   const [showContentModal, setShowContentModal] = useState(false);
-  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [activePresetId, setActivePresetId] = useState<string | null>('preset_jianghu');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const bgColorPaletteRef = useRef<HTMLDivElement>(null);
   const bgColorButtonRef = useRef<HTMLButtonElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      const offset = window.innerHeight - viewport.height;
+      setKeyboardHeight(offset > 150 ? offset : 0);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      window.visualViewport?.removeEventListener('scroll', handleViewportChange);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('coverState_v3', JSON.stringify(state));
@@ -163,7 +182,6 @@ const App: React.FC = () => {
     const handleResize = () => {
         if (previewContainerRef.current) {
             const width = previewContainerRef.current.clientWidth;
-            // 400px is the card width. 32px safety margin.
             if (width < 432) {
                 setPreviewScale((width - 32) / 400);
             } else {
@@ -174,7 +192,6 @@ const App: React.FC = () => {
 
     window.addEventListener('resize', handleResize);
     handleResize();
-    // Double check after layout settlement
     setTimeout(handleResize, 100);
 
     return () => window.removeEventListener('resize', handleResize);
@@ -202,6 +219,7 @@ const App: React.FC = () => {
 
   const handleDeletePreset = (id: string) => {
     setPresets(prev => prev.filter(p => p.id !== id));
+    if (activePresetId === id) setActivePresetId(null);
   };
 
   const handleLoadPreset = (preset: ContentPreset) => {
@@ -209,8 +227,8 @@ const App: React.FC = () => {
       ...prev,
       title: preset.title,
       subtitle: preset.subtitle,
-      bodyText: preset.bodyText,
-      secondaryBodyText: preset.secondaryBodyText || '',
+      bodyText: preset.bodyText || prev.bodyText,
+      secondaryBodyText: preset.secondaryBodyText || prev.secondaryBodyText || '',
       category: preset.category,
       author: preset.author
     }));
@@ -238,6 +256,22 @@ const App: React.FC = () => {
       const newId = handleSavePreset(name);
       setActivePresetId(newId);
       setIsCreatingNew(false);
+    } else if (activePresetId) {
+      // 核心修复：如果是编辑已有草稿，同步更新草稿列表中的分类及其他信息
+      setPresets(prev => prev.map(p => 
+        p.id === activePresetId 
+          ? { 
+              ...p, 
+              title: state.title, 
+              subtitle: state.subtitle, 
+              bodyText: state.bodyText, 
+              secondaryBodyText: state.secondaryBodyText,
+              category: state.category,
+              author: state.author,
+              name: state.title || p.name 
+            } 
+          : p
+      ));
     }
     setShowContentModal(false);
   };
@@ -251,13 +285,10 @@ const App: React.FC = () => {
 
     try {
       await document.fonts.ready;
-      // Slight delay to ensure any layout shifts from isExporting state are done
       await new Promise(resolve => setTimeout(resolve, 200)); 
 
-      // Manually fetch and embed fonts to avoid html-to-image scanning all global stylesheets
       const fontCss = await getEmbedFontCSS();
 
-      // Configure export options
       const exportOptions: any = {
         cacheBust: true,
         pixelRatio: 4, 
@@ -267,10 +298,10 @@ const App: React.FC = () => {
 
       if (state.mode === 'cover') {
         exportOptions.width = 400;
-        exportOptions.height = 500;
+        exportOptions.height = 533; 
         exportOptions.style = {
            width: '400px',
-           height: '500px',
+           height: '533px',
            maxWidth: 'none',
            maxHeight: 'none',
            transform: 'none',
@@ -346,6 +377,7 @@ const App: React.FC = () => {
           onExport={handleExport}
           activeTab={activeTab || 'style'} 
           onTabChange={(t) => setActiveTab(t)}
+          isExporting={isExporting}
         />
       </div>
 
@@ -393,7 +425,10 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
+            <div 
+              className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white"
+              style={{ paddingBottom: `${keyboardHeight}px`, transition: 'padding-bottom 0.1s ease-out' }}
+            >
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 
@@ -411,6 +446,12 @@ const App: React.FC = () => {
                         state={state} 
                         onChange={handleStateChange} 
                         onExport={handleExport}
+                    />}
+                    {activeTab === 'export' && <MobileExportPanel
+                        state={state}
+                        onChange={handleStateChange}
+                        onExport={handleExport}
+                        isExporting={isExporting}
                     />}
                     
                     {!activeTab && <RichTextToolbar
@@ -443,7 +484,7 @@ const App: React.FC = () => {
                         <ArrowsRightLeftIcon className="w-6 h-6" />
                         <span className="text-[10px] font-bold">{state.mode === 'cover' ? '长图' : '封面'}</span>
                       </button>
-                      <button onClick={handleExportClick} className="flex flex-col items-center gap-1 text-gray-500 transition-colors w-16">
+                      <button onClick={() => toggleMobileTab('export')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'export' ? 'text-purple-600' : 'text-gray-500'}`}>
                         <ArrowDownTrayIcon className="w-6 h-6" />
                         <span className="text-[10px] font-bold">导出</span>
                       </button>
