@@ -1,5 +1,4 @@
 
-
 export interface CoverState {
   title: string;
   subtitle: string;
@@ -29,6 +28,44 @@ export interface ContentPreset {
   secondaryBodyText?: string;
   category: string;
   author: string;
+}
+
+/**
+ * [FormattingStyles] defines the visual styling properties that can be applied
+ * via a TransformationRule.
+ */
+export interface FormattingStyles {
+  color?: string;
+  fontSize?: number;
+  isBold?: boolean;
+  isItalic?: boolean;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+}
+
+/**
+ * [TransformationRule] represents a rule for automatically formatting text
+ * based on patterns (regex or keywords).
+ */
+export interface TransformationRule {
+  id: string;
+  name: string;
+  pattern: string;
+  formatting: FormattingStyles;
+  scope: 'match' | 'paragraph';
+  isActive: boolean;
+}
+
+/**
+ * [AdvancedPreset] extends basic presets to include complex styling rules
+ * and conditional content application.
+ */
+export interface AdvancedPreset {
+  id: string;
+  name: string;
+  includeStyle: boolean;
+  includeContent: boolean;
+  coverState: Partial<CoverState>;
+  rules: TransformationRule[];
 }
 
 export type FontStyle = CoverState['titleFont'];

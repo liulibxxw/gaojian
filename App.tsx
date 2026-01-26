@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { CoverState, ContentPreset, EditorTab } from './types';
 import { 
@@ -256,7 +257,6 @@ const App: React.FC = () => {
       setActivePresetId(newId);
       setIsCreatingNew(false);
     } else if (activePresetId) {
-      // 核心修复：如果是编辑已有草稿，同步更新草稿列表中的分类及其他信息
       setPresets(prev => prev.map(p => 
         p.id === activePresetId 
           ? { 
@@ -296,11 +296,12 @@ const App: React.FC = () => {
       };
 
       if (state.mode === 'cover') {
+        // 固定为 1600x1760 (400*4 x 440*4)
         exportOptions.width = 400;
-        exportOptions.height = 533; 
+        exportOptions.height = 440; 
         exportOptions.style = {
            width: '400px',
-           height: '533px',
+           height: '440px',
            maxWidth: 'none',
            maxHeight: 'none',
            transform: 'none',
@@ -356,12 +357,6 @@ const App: React.FC = () => {
     handleStateChange({ mode: state.mode === 'cover' ? 'long-text' : 'cover' });
   };
   
-  const handleExportClick = () => {
-      setActiveTab(undefined);
-      setShowBgColorPalette(false);
-      handleExport();
-  };
-
   return (
     <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full supports-[height:100dvh]:h-[100dvh] bg-gray-50 overflow-hidden text-gray-800">
       
@@ -424,7 +419,10 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white">
+            <div 
+              className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white"
+              style={{ paddingBottom: `${keyboardHeight}px`, transition: 'padding-bottom 0.1s ease-out' }}
+            >
                 <div className="relative w-full bg-gray-50/50">
                     {activeTab === 'drafts' && <MobileDraftsStrip 
                         presets={presets} 
