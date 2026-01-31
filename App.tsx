@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { CoverState, ContentPreset, EditorTab } from './types';
+import { CoverState, ContentPreset, EditorTab, AdvancedPreset, TransformationRule } from './types';
 import { 
   INITIAL_TITLE, 
   INITIAL_SUBTITLE, 
@@ -16,9 +16,10 @@ import {
 } from './constants';
 import CoverPreview from './components/CoverPreview';
 import EditorControls, { MobileDraftsStrip, MobileStylePanel, ContentEditorModal, MobileExportPanel } from './components/EditorControls';
+import { MobilePresetPanel } from './components/PresetPanel';
 import ExportModal from './components/ExportModal';
 import RichTextToolbar from './components/RichTextToolbar';
-import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon } from '@heroicons/react/24/solid';
+import { ArrowDownTrayIcon, PaintBrushIcon, BookmarkIcon, ArrowsRightLeftIcon, SwatchIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { toPng } from 'html-to-image';
 
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;700;900&family=ZCOOL+QingKe+HuangYou&display=swap";
@@ -79,7 +80,8 @@ const App: React.FC = () => {
            textColor: parsed.textColor || INITIAL_TEXT_COLOR,
            titleFont: parsed.titleFont || 'serif',
            secondaryBodyText: parsed.secondaryBodyText || '',
-           layoutStyle: parsed.layoutStyle || 'minimal'
+           layoutStyle: parsed.layoutStyle || 'minimal',
+           mode: 'long-text' // 强制默认长图
         };
       }
     } catch (e) {
@@ -98,7 +100,7 @@ const App: React.FC = () => {
       titleFont: 'serif',
       bodyFont: 'serif',
       layoutStyle: 'minimal',
-      mode: 'cover',
+      mode: 'long-text', // 默认长图模式
       bodyTextSize: 'text-[13px]',
       bodyTextAlign: 'text-justify',
       isBodyBold: false,
@@ -118,8 +120,18 @@ const App: React.FC = () => {
       return DEFAULT_PRESETS;
     }
   });
+
+  const [advancedPresets, setAdvancedPresets] = useState<AdvancedPreset[]>(() => {
+    try {
+      const saved = localStorage.getItem('advancedPresets_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [showContentModal, setShowContentModal] = useState(false);
-  const [activePresetId, setActivePresetId] = useState<string | null>('preset_jianghu');
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBgColorPalette, setShowBgColorPalette] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
@@ -132,17 +144,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!window.visualViewport) return;
-
     const handleViewportChange = () => {
       const viewport = window.visualViewport;
       if (!viewport) return;
       const offset = window.innerHeight - viewport.height;
       setKeyboardHeight(offset > 150 ? offset : 0);
     };
-
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
-    
     return () => {
       window.visualViewport?.removeEventListener('resize', handleViewportChange);
       window.visualViewport?.removeEventListener('scroll', handleViewportChange);
@@ -156,6 +165,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('coverPresets_v3', JSON.stringify(presets));
   }, [presets]);
+
+  useEffect(() => {
+    localStorage.setItem('advancedPresets_v1', JSON.stringify(advancedPresets));
+  }, [advancedPresets]);
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -168,11 +181,9 @@ const App: React.FC = () => {
             setShowBgColorPalette(false);
         }
     };
-
     if (showBgColorPalette) {
         document.addEventListener('mousedown', handleClickOutside);
     }
-
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -189,11 +200,9 @@ const App: React.FC = () => {
             }
         }
     };
-
     window.addEventListener('resize', handleResize);
     handleResize();
     setTimeout(handleResize, 100);
-
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -233,6 +242,132 @@ const App: React.FC = () => {
       author: preset.author
     }));
     setActivePresetId(preset.id);
+  };
+
+  const handleSaveAdvancedPreset = (preset: AdvancedPreset) => {
+    setAdvancedPresets(prev => {
+        const existingIndex = prev.findIndex(p => p.id === preset.id);
+        if (existingIndex > -1) {
+            const newList = [...prev];
+            newList[existingIndex] = preset;
+            return newList;
+        }
+        return [preset, ...prev];
+    });
+  };
+
+  const handleDeleteAdvancedPreset = (id: string) => {
+    setAdvancedPresets(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleApplyAdvancedPreset = (preset: AdvancedPreset) => {
+    if (preset.coverState) {
+        setState(prev => ({ ...prev, ...preset.coverState }));
+    }
+    if (preset.rules && preset.rules.length > 0) {
+        handleFormatText(preset.rules);
+    }
+  };
+
+  const handleFormatText = (rules: TransformationRule[]) => {
+      if (!rules.length) return;
+      const processHtml = (html: string) => {
+        if (!html) return html;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const processNode = (node: ChildNode) => {
+            let text = "";
+            let targetNode: HTMLElement | null = null;
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                targetNode = node as HTMLElement;
+                if (targetNode.classList.contains('multi-align-row')) {
+                    text = Array.from(targetNode.querySelectorAll('div')).map(d => (d as HTMLElement).innerText).join(' | ');
+                } else {
+                    text = targetNode.innerText || "";
+                }
+            } else if (node.nodeType === Node.TEXT_NODE) {
+                text = node.textContent || "";
+            }
+            if (!text.trim()) return;
+            for (const rule of rules) {
+                if (!rule.isActive) continue;
+                let regex: RegExp;
+                try {
+                    regex = new RegExp(rule.pattern, 'gi');
+                } catch (e) { continue; }
+                if (regex.test(text)) {
+                    const fmt = rule.formatting;
+                    if (rule.structure === 'multi-align-row') {
+                        const separatorRegex = /[|｜\t,，\u2014\u2015\u2500-\u257F\uFF0C]+/;
+                        const parts = text.split(separatorRegex).map(p => p.trim()).filter(Boolean);
+                        if (parts.length > 0) {
+                            const left = parts[0] || '';
+                            const center = parts.length > 2 ? parts[1] : (parts.length === 2 ? '' : '');
+                            const right = parts.length > 2 ? parts[2] : (parts.length === 2 ? parts[1] : '');
+                            const container = document.createElement('div');
+                            container.className = 'multi-align-row';
+                            container.style.display = 'grid';
+                            container.style.gridTemplateColumns = '1fr 1fr 1fr';
+                            container.style.width = '100%';
+                            container.style.gap = '4px';
+                            container.style.margin = '4px 0';
+                            const createCol = (content: string, align: string) => {
+                                const col = document.createElement('div');
+                                col.style.textAlign = align;
+                                col.innerHTML = content || '&nbsp;';
+                                if (rule.scope === 'match' && fmt.color) col.style.color = fmt.color;
+                                if (fmt.fontSize) col.style.fontSize = `${fmt.fontSize}px`;
+                                if (fmt.isBold) col.style.fontWeight = 'bold';
+                                if (fmt.isItalic) col.style.fontStyle = 'italic';
+                                return col;
+                            };
+                            container.appendChild(createCol(left, 'left'));
+                            container.appendChild(createCol(center, 'center'));
+                            container.appendChild(createCol(right, 'right'));
+                            node.replaceWith(container);
+                            return; 
+                        }
+                    }
+                    if (rule.scope === 'paragraph') {
+                        let element: HTMLElement;
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            element = document.createElement('div');
+                            element.textContent = node.textContent;
+                        } else {
+                            element = (node as HTMLElement).cloneNode(true) as HTMLElement;
+                        }
+                        if (fmt.fontSize) element.style.fontSize = `${fmt.fontSize}px`;
+                        if (fmt.isBold) element.style.fontWeight = 'bold';
+                        if (fmt.isItalic) element.style.fontStyle = 'italic';
+                        if (fmt.textAlign) element.style.textAlign = fmt.textAlign;
+                        node.replaceWith(element);
+                        return;
+                    } else if (rule.scope === 'match') {
+                        const styleStr = [
+                            fmt.color ? `color:${fmt.color}` : '',
+                            fmt.fontSize ? `font-size:${fmt.fontSize}px` : '',
+                            fmt.isBold ? `font-weight:bold` : '',
+                            fmt.isItalic ? `font-style:italic` : ''
+                        ].filter(Boolean).join(';');
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            const span = document.createElement('span');
+                            span.innerHTML = node.textContent!.replace(regex, match => `<span style="${styleStr}">${match}</span>`);
+                            node.replaceWith(span);
+                        } else if (targetNode) {
+                            targetNode.innerHTML = targetNode.innerHTML.replace(regex, match => `<span style="${styleStr}">${match}</span>`);
+                        }
+                        return;
+                    }
+                }
+            }
+        };
+        const nodes = Array.from(tempDiv.childNodes);
+        nodes.forEach(processNode);
+        return tempDiv.innerHTML;
+      };
+      const newBodyText = processHtml(state.bodyText);
+      const newSecondaryBodyText = processHtml(state.secondaryBodyText);
+      setState(prev => ({ ...prev, bodyText: newBodyText, secondaryBodyText: newSecondaryBodyText }));
   };
 
   const handleCreateNew = () => {
@@ -277,48 +412,28 @@ const App: React.FC = () => {
 
   const handleExport = async () => {
     if (!previewRef.current) return;
-    
     setIsExporting(true);
     setExportImage(null);
     setShowExportModal(true);
-
     try {
       await document.fonts.ready;
       await new Promise(resolve => setTimeout(resolve, 200)); 
-
       const fontCss = await getEmbedFontCSS();
-
       const exportOptions: any = {
         cacheBust: true,
         pixelRatio: 4, 
         backgroundColor: state.backgroundColor,
         fontEmbedCSS: fontCss,
       };
-
       if (state.mode === 'cover') {
-        // 固定为 1600x1760 (400*4 x 440*4)
         exportOptions.width = 400;
         exportOptions.height = 440; 
-        exportOptions.style = {
-           width: '400px',
-           height: '440px',
-           maxWidth: 'none',
-           maxHeight: 'none',
-           transform: 'none',
-           margin: '0',
-        };
+        exportOptions.style = { width: '400px', height: '440px', maxWidth: 'none', maxHeight: 'none', transform: 'none', margin: '0' };
       } else {
         exportOptions.width = 400;
-         exportOptions.style = {
-           width: '400px',
-           maxWidth: 'none',
-           transform: 'none',
-           margin: '0',
-        };
+        exportOptions.style = { width: '400px', maxWidth: 'none', transform: 'none', margin: '0' };
       }
-
       const dataUrl = await toPng(previewRef.current, exportOptions);
-
       setExportImage(dataUrl);
     } catch (error) {
       console.error("Export failed:", error);
@@ -329,21 +444,10 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadImage = () => {
-    if (!exportImage) return;
-    const link = document.createElement('a');
-    link.href = exportImage;
-    link.download = `cover-${Date.now()}.png`;
-    link.click();
-  };
-
   const toggleMobileTab = (tab: EditorTab) => {
     setShowBgColorPalette(false);
-    if (activeTab === tab) {
-      setActiveTab(undefined);
-    } else {
-      setActiveTab(tab);
-    }
+    if (activeTab === tab) setActiveTab(undefined);
+    else setActiveTab(tab);
   };
   
   const toggleBgPalette = () => {
@@ -359,7 +463,6 @@ const App: React.FC = () => {
   
   return (
     <div className="flex flex-col lg:flex-row fixed inset-0 w-full h-full supports-[height:100dvh]:h-[100dvh] bg-gray-50 overflow-hidden text-gray-800">
-      
       <div className="hidden lg:block w-96 bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] shrink-0 h-full overflow-hidden">
         <EditorControls 
           state={state} 
@@ -372,19 +475,19 @@ const App: React.FC = () => {
           activeTab={activeTab || 'style'} 
           onTabChange={(t) => setActiveTab(t)}
           isExporting={isExporting}
+          advancedPresets={advancedPresets}
+          onSaveAdvancedPreset={handleSaveAdvancedPreset}
+          onDeleteAdvancedPreset={handleDeleteAdvancedPreset}
+          onApplyAdvancedPreset={handleApplyAdvancedPreset}
+          onFormatText={handleFormatText}
         />
       </div>
-
       <div className="flex-1 relative flex flex-col h-full overflow-hidden">
         <div className="lg:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-center px-4 shrink-0 z-20 flex-none">
             <span className="font-bold text-gray-800">衔书又止</span>
         </div>
-
         <div className="flex-1 relative overflow-hidden bg-gray-100/50 flex flex-col">
-            <div 
-                ref={previewContainerRef}
-                className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start"
-            >
+            <div ref={previewContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center custom-scrollbar items-start">
                <div className="transition-all duration-300 w-full lg:w-auto p-0 lg:p-8 min-h-full lg:h-auto flex justify-center items-center">
                   <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'center center' }}>
                     <CoverPreview 
@@ -397,122 +500,35 @@ const App: React.FC = () => {
                   </div>
                </div>
             </div>
-
             {showBgColorPalette && (
-                <div 
-                    ref={bgColorPaletteRef}
-                    className="fixed z-50 bottom-32 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in"
-                    style={{ width: 'max-content', maxWidth: '90vw' }}
-                >
+                <div ref={bgColorPaletteRef} className="fixed z-50 bottom-32 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border border-gray-200 shadow-xl rounded-xl p-4 flex flex-wrap justify-center gap-3 animate-in slide-in-from-bottom-2 fade-in" style={{ width: 'max-content', maxWidth: '90vw' }}>
                     {PALETTE.map((color) => (
-                        <button
-                            key={color.value}
-                            onClick={() => {
-                                handleStateChange({ backgroundColor: color.value });
-                                setShowBgColorPalette(false);
-                            }}
-                            className={`w-10 h-10 rounded-full border shadow-sm hover:scale-110 transition-transform ${state.backgroundColor === color.value ? 'ring-2 ring-purple-500 ring-offset-2' : 'border-gray-200'}`}
-                            style={{ backgroundColor: color.value }}
-                            title={color.label}
-                        />
+                        <button key={color.value} onClick={() => { handleStateChange({ backgroundColor: color.value }); setShowBgColorPalette(false); }} className={`w-10 h-10 rounded-full border shadow-sm hover:scale-110 transition-transform ${state.backgroundColor === color.value ? 'ring-2 ring-purple-500 ring-offset-2' : 'border-gray-200'}`} style={{ backgroundColor: color.value }} title={color.label} />
                     ))}
                 </div>
             )}
-
-            <div 
-              className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white"
-              style={{ paddingBottom: `${keyboardHeight}px`, transition: 'padding-bottom 0.1s ease-out' }}
-            >
+            <div className="lg:hidden flex-none z-40 flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bg-white" style={{ paddingBottom: `${keyboardHeight}px`, transition: 'padding-bottom 0.1s ease-out' }}>
                 <div className="relative w-full bg-gray-50/50">
-                    {activeTab === 'drafts' && <MobileDraftsStrip 
-                        presets={presets} 
-                        onLoadPreset={handleLoadPreset} 
-                        onDeletePreset={handleDeletePreset} 
-                        onSavePreset={handleSavePreset} 
-                        state={state} 
-                        onEditContent={() => setShowContentModal(true)} 
-                        activePresetId={activePresetId} 
-                        onCreateNew={handleCreateNew} 
-                        onChange={handleStateChange}
-                        onExport={handleExport}
-                    />}
-                    {activeTab === 'style' && <MobileStylePanel 
-                        state={state} 
-                        onChange={handleStateChange} 
-                        onExport={handleExport}
-                    />}
-                    {activeTab === 'export' && <MobileExportPanel
-                        state={state}
-                        onChange={handleStateChange}
-                        onExport={handleExport}
-                        isExporting={isExporting}
-                    />}
-                    
-                    {!activeTab && <RichTextToolbar
-                        visible={true}
-                        state={state}
-                        onChange={handleStateChange}
-                    />}
+                    {activeTab === 'drafts' && <MobileDraftsStrip presets={presets} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset} onSavePreset={handleSavePreset} state={state} onEditContent={() => setShowContentModal(true)} activePresetId={activePresetId} onCreateNew={handleCreateNew} onChange={handleStateChange} onExport={handleExport} />}
+                    {activeTab === 'style' && <MobileStylePanel state={state} onChange={handleStateChange} onExport={handleExport} />}
+                    {activeTab === 'export' && <MobileExportPanel state={state} onChange={handleStateChange} onExport={handleExport} isExporting={isExporting} />}
+                    {activeTab === 'presets' && <MobilePresetPanel state={state} presets={advancedPresets} onSavePreset={handleSaveAdvancedPreset} onDeletePreset={handleDeleteAdvancedPreset} onApplyPreset={handleApplyAdvancedPreset} onFormatText={handleFormatText} />}
+                    {!activeTab && <RichTextToolbar visible={true} state={state} onChange={handleStateChange} />}
                 </div>
-
-                <div 
-                  className="h-16 bg-white border-t border-gray-100 flex items-center justify-around px-2 relative z-50"
-                >
-                      <button onClick={() => toggleMobileTab('drafts')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'drafts' ? 'text-purple-600' : 'text-gray-500'}`}>
-                        <BookmarkIcon className="w-6 h-6" />
-                        <span className="text-[10px] font-bold">草稿</span>
-                      </button>
-                      <button onClick={() => toggleMobileTab('style')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'style' ? 'text-purple-600' : 'text-gray-500'}`}>
-                        <PaintBrushIcon className="w-6 h-6" />
-                        <span className="text-[10px] font-bold">风格</span>
-                      </button>
-                      <button 
-                        ref={bgColorButtonRef}
-                        onClick={toggleBgPalette}
-                        className="w-12 h-12 rounded-full border-4 border-white shadow-lg -translate-y-4 bg-gradient-to-br from-rose-200 to-blue-200 flex items-center justify-center relative z-50"
-                        style={{ backgroundColor: state.backgroundColor }}
-                      >
-                        <SwatchIcon className="w-6 h-6 text-white/80" />
-                      </button>
-                      <button onClick={handleModeToggle} className="flex flex-col items-center gap-1 text-gray-500 transition-colors w-16">
-                        <ArrowsRightLeftIcon className="w-6 h-6" />
-                        <span className="text-[10px] font-bold">{state.mode === 'cover' ? '长图' : '封面'}</span>
-                      </button>
-                      <button onClick={() => toggleMobileTab('export')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'export' ? 'text-purple-600' : 'text-gray-500'}`}>
-                        <ArrowDownTrayIcon className="w-6 h-6" />
-                        <span className="text-[10px] font-bold">导出</span>
-                      </button>
+                <div className="h-16 bg-white border-t border-gray-100 flex items-center justify-around px-2 relative z-50">
+                      <button onClick={() => toggleMobileTab('drafts')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'drafts' ? 'text-purple-600' : 'text-gray-500'}`}><BookmarkIcon className="w-6 h-6" /><span className="text-[10px] font-bold">草稿</span></button>
+                      <button onClick={() => toggleMobileTab('style')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'style' ? 'text-purple-600' : 'text-gray-500'}`}><PaintBrushIcon className="w-6 h-6" /><span className="text-[10px] font-bold">风格</span></button>
+                      <button onClick={() => toggleMobileTab('presets')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'presets' ? 'text-purple-600' : 'text-gray-500'}`}><SparklesIcon className="w-6 h-6" /><span className="text-[10px] font-bold">预设</span></button>
+                      <button ref={bgColorButtonRef} onClick={toggleBgPalette} className="w-12 h-12 rounded-full border-4 border-white shadow-lg -translate-y-4 bg-gradient-to-br from-rose-200 to-blue-200 flex items-center justify-center relative z-50" style={{ backgroundColor: state.backgroundColor }}><SwatchIcon className="w-6 h-6 text-white/80" /></button>
+                      <button onClick={handleModeToggle} className="flex flex-col items-center gap-1 text-gray-500 transition-colors w-16"><ArrowsRightLeftIcon className="w-6 h-6" /><span className="text-[10px] font-bold">{state.mode === 'cover' ? '长图' : '封面'}</span></button>
+                      <button onClick={() => toggleMobileTab('export')} className={`flex flex-col items-center gap-1 transition-colors w-16 ${activeTab === 'export' ? 'text-purple-600' : 'text-gray-500'}`}><ArrowDownTrayIcon className="w-6 h-6" /><span className="text-[10px] font-bold">导出</span></button>
                 </div>
             </div>
         </div>
-
-        {showExportModal && (
-          <ExportModal 
-            imageUrl={exportImage} 
-            isExporting={isExporting}
-            onClose={() => setShowExportModal(false)}
-            onDownload={downloadImage}
-          />
-        )}
-
-        <ContentEditorModal 
-          isOpen={showContentModal}
-          onClose={() => {
-            setShowContentModal(false);
-            if (isCreatingNew) {
-                setIsCreatingNew(false);
-                if (presets.length > 0) {
-                    handleLoadPreset(presets[0]);
-                }
-            }
-          }}
-          state={state}
-          onChange={handleStateChange}
-          onConfirm={handleModalConfirm}
-        />
+        {showExportModal && <ExportModal imageUrl={exportImage} isExporting={isExporting} onClose={() => setShowExportModal(false)} onDownload={() => { if (exportImage) { const link = document.createElement('a'); link.href = exportImage; link.download = `cover-${Date.now()}.png`; link.click(); } }} />}
+        <ContentEditorModal isOpen={showContentModal} onClose={() => { setShowContentModal(false); if (isCreatingNew) { setIsCreatingNew(false); if (presets.length > 0) handleLoadPreset(presets[0]); } }} state={state} onChange={handleStateChange} onConfirm={handleModalConfirm} />
       </div>
     </div>
   );
 };
-
 export default App;

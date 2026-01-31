@@ -30,10 +30,6 @@ export interface ContentPreset {
   author: string;
 }
 
-/**
- * [FormattingStyles] defines the visual styling properties that can be applied
- * via a TransformationRule.
- */
 export interface FormattingStyles {
   color?: string;
   fontSize?: number;
@@ -42,23 +38,16 @@ export interface FormattingStyles {
   textAlign?: 'left' | 'center' | 'right' | 'justify';
 }
 
-/**
- * [TransformationRule] represents a rule for automatically formatting text
- * based on patterns (regex or keywords).
- */
 export interface TransformationRule {
   id: string;
   name: string;
   pattern: string;
   formatting: FormattingStyles;
   scope: 'match' | 'paragraph';
+  structure?: 'multi-align-row'; // 新增：结构化布局标识
   isActive: boolean;
 }
 
-/**
- * [AdvancedPreset] extends basic presets to include complex styling rules
- * and conditional content application.
- */
 export interface AdvancedPreset {
   id: string;
   name: string;
@@ -70,4 +59,4 @@ export interface AdvancedPreset {
 
 export type FontStyle = CoverState['titleFont'];
 export type LayoutStyle = CoverState['layoutStyle'];
-export type EditorTab = 'style' | 'drafts' | 'content' | 'export';
+export type EditorTab = 'style' | 'drafts' | 'content' | 'export' | 'presets';

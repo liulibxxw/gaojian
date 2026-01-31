@@ -1,7 +1,6 @@
 
-
 import React, { useState } from 'react';
-import { CoverState, FontStyle, LayoutStyle, ContentPreset, EditorTab } from '../types';
+import { CoverState, FontStyle, LayoutStyle, ContentPreset, EditorTab, AdvancedPreset, TransformationRule } from '../types';
 import { PALETTE, TEXT_PALETTE } from '../constants';
 import { 
     BookmarkIcon, 
@@ -14,8 +13,10 @@ import {
     AdjustmentsHorizontalIcon,
     SwatchIcon,
     ArrowDownTrayIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    SparklesIcon
 } from '@heroicons/react/24/solid';
+import { SavePresetModal } from './PresetPanel';
 
 interface EditorControlsProps {
   state: CoverState;
@@ -34,6 +35,11 @@ interface EditorControlsProps {
   activePresetId?: string | null;
   onCreateNew?: () => void;
   isExporting?: boolean;
+  advancedPresets?: AdvancedPreset[];
+  onSaveAdvancedPreset?: (preset: AdvancedPreset) => void;
+  onDeleteAdvancedPreset?: (id: string) => void;
+  onApplyAdvancedPreset?: (preset: AdvancedPreset) => void;
+  onFormatText?: (rules: TransformationRule[]) => void;
 }
 
 export const MobileDraftsStrip: React.FC<EditorControlsProps> = ({
@@ -334,13 +340,19 @@ const EditorControls: React.FC<EditorControlsProps> = ({
   onLoadPreset,
   activeTab,
   onTabChange,
-  mobileView,
   onExport,
-  isExporting
+  isExporting,
+  advancedPresets = [],
+  onSaveAdvancedPreset,
+  onDeleteAdvancedPreset,
+  onApplyAdvancedPreset,
+  onFormatText
 }) => {
   const [isSavingPreset, setIsSavingPreset] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState('');
   const [characterName, setCharacterName] = useState('');
+  const [showSaveAdvancedModal, setShowSaveAdvancedModal] = useState(false);
+  const [editingAdvancedPreset, setEditingAdvancedPreset] = useState<AdvancedPreset | undefined>(undefined);
   
   const startSavePreset = () => {
     setPresetNameInput(state.title || '无标题草稿');
@@ -423,6 +435,87 @@ const EditorControls: React.FC<EditorControlsProps> = ({
     </div>
   );
 
+  const renderPresetsTab = () => (
+    <div className="space-y-4 h-full flex flex-col">
+        <div className="flex justify-between items-center px-1 shrink-0">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <SparklesIcon className="w-4 h-4 text-indigo-500" />
+                高级预设库
+                <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{advancedPresets.length}</span>
+            </h3>
+            
+            <button 
+                onClick={() => { setEditingAdvancedPreset(undefined); setShowSaveAdvancedModal(true); }}
+                className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700 transition-all shadow-sm active:scale-95"
+            >
+                <PlusIcon className="w-3 h-3" />
+                新建预设
+            </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-3 pb-4 custom-scrollbar">
+            {advancedPresets.length === 0 && (
+                <div className="py-12 flex flex-col items-center text-center px-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                    <SparklesIcon className="w-8 h-8 text-gray-200 mb-2" />
+                    <p className="text-xs text-gray-400">尚未创建高级预设</p>
+                    <p className="text-[10px] text-gray-300 mt-1">预设可以保存特定的风格组合与排版规则</p>
+                </div>
+            )}
+            {advancedPresets.map((preset) => (
+                <div 
+                    key={preset.id}
+                    onClick={() => onApplyAdvancedPreset?.(preset)}
+                    className="group relative bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer flex flex-col gap-2 active:scale-95"
+                >
+                    <div className="flex justify-between items-start">
+                        <div className="font-bold text-sm text-gray-800 truncate">{preset.name}</div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setEditingAdvancedPreset(preset); setShowSaveAdvancedModal(true); }}
+                                className="text-gray-400 hover:text-indigo-500 transition-colors"
+                            >
+                                <PencilSquareIcon className="w-4 h-4" />
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteAdvancedPreset?.(preset.id); }}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-1.5 flex-wrap">
+                        {preset.includeStyle && <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 font-bold">风格</span>}
+                        {preset.includeContent && <span className="text-[9px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded border border-green-100 font-bold">内容</span>}
+                        {preset.rules.length > 0 && <span className="text-[9px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded border border-purple-100 font-bold">{preset.rules.length} 条转化规则</span>}
+                    </div>
+
+                    {preset.rules.length > 0 && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onFormatText?.(preset.rules); }}
+                            className="mt-1 w-full py-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-1"
+                        >
+                            <SparklesIcon className="w-3 h-3" />
+                            应用转化规则
+                        </button>
+                    )}
+                </div>
+            ))}
+        </div>
+        
+        {showSaveAdvancedModal && onSaveAdvancedPreset && (
+            <SavePresetModal 
+                isOpen={showSaveAdvancedModal}
+                onClose={() => setShowSaveAdvancedModal(false)}
+                onConfirm={onSaveAdvancedPreset}
+                currentState={state}
+                initialData={editingAdvancedPreset}
+            />
+        )}
+    </div>
+  );
+
   const renderContentTab = () => (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -431,8 +524,8 @@ const EditorControls: React.FC<EditorControlsProps> = ({
              <span className="text-sm font-bold uppercase tracking-wider">文本内容</span>
         </div>
         
-        <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100">
-           提示：点击正文区域即可进行富文本编辑。选中文字可加粗、变斜或调整对齐方式。点击正文唤起工具栏可修改背景与文字颜色。
+        <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded-lg border border-blue-100 leading-relaxed">
+           提示：点击正文区域即可进行富文本编辑。使用“搜索修饰”可以快速对齐或染色特定段落。在“预设”中可以保存属于你的排版模板。
         </div>
 
         <div>
@@ -564,13 +657,13 @@ const EditorControls: React.FC<EditorControlsProps> = ({
   const TabButton = ({ isActive, onClick, icon: Icon, label }: { isActive: boolean, onClick: () => void, icon: React.FC<any>, label: string }) => (
     <button
       onClick={onClick}
-      className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 text-xs font-bold transition-all ${
+      className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-3 text-[10px] md:text-xs font-bold transition-all ${
         isActive
-          ? 'text-purple-600 border-b-2 border-purple-600'
+          ? 'text-indigo-600 border-b-2 border-indigo-600'
           : 'text-gray-400 hover:text-gray-600 border-b-2 border-transparent'
       }`}
     >
-      <Icon className="w-5 h-5" />
+      <Icon className="w-4 h-4 md:w-5 md:h-5" />
       <span>{label}</span>
     </button>
   );
@@ -581,7 +674,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
         <div className="flex justify-between items-center mb-1">
           <div>
              <h2 className="text-2xl font-bold text-gray-900">衔书又止</h2>
-             <p className="text-gray-400 text-xs mt-1">衔书又止</p>
+             <p className="text-gray-400 text-xs mt-1">书不尽言，言不尽意</p>
           </div>
         </div>
       </div>
@@ -589,6 +682,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
       <div className="px-2 md:px-6 border-b border-gray-100 shrink-0">
           <div className="flex">
             <TabButton isActive={activeTab === 'drafts'} onClick={() => onTabChange?.('drafts')} icon={BookmarkIcon} label="我的草稿" />
+            <TabButton isActive={activeTab === 'presets'} onClick={() => onTabChange?.('presets')} icon={SparklesIcon} label="高级预设" />
             <TabButton isActive={activeTab === 'content'} onClick={() => onTabChange?.('content')} icon={PencilSquareIcon} label="内容编辑" />
             <TabButton isActive={activeTab === 'style'} onClick={() => onTabChange?.('style')} icon={PaintBrushIcon} label="风格布局" />
           </div>
@@ -599,6 +693,7 @@ const EditorControls: React.FC<EditorControlsProps> = ({
           {activeTab === 'style' && renderStyleTab()}
           {activeTab === 'drafts' && renderDraftsTab()}
           {activeTab === 'content' && renderContentTab()}
+          {activeTab === 'presets' && renderPresetsTab()}
         </div>
       </div>
     </div>

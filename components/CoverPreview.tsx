@@ -150,7 +150,8 @@ const CoverPreview = forwardRef<HTMLDivElement, CoverPreviewProps>(({ state, onB
   };
   
   const getBodyClasses = () => {
-      return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()} transition-all duration-300 [&_*]:text-inherit`;
+      // 增强子项对齐的强制力
+      return `${bodyTextSize} ${bodyTextAlign} leading-[1.5] outline-none ${getBodyFontClass()} transition-all duration-300 [&_*]:text-inherit [&_.multi-align-row]:!grid [&_.multi-align-row]:!grid-cols-3 [&_.multi-align-row]:!w-full [&_.multi-align-row]:!gap-1 [&_.multi-align-row]:!my-1 [&_.multi-align-row_div:nth-child(1)]:!text-left [&_.multi-align-row_div:nth-child(2)]:!text-center [&_.multi-align-row_div:nth-child(3)]:!text-right`;
   };
 
   const renderTechDecorations = () => (
